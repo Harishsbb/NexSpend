@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "502187204773",
+    "project_id": "finance-flow-sbb",
+    "storage_bucket": "finance-flow-sbb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:502187204773:android:36aef1b5133c2088dbed4c",
+        "android_client_info": {
+          "package_name": "com.antigravity.finance_flow.finance_flow"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDJX83jIThp3XNSwjUetvd9YnqEj_sdeIE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
