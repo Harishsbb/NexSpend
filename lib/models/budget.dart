@@ -33,7 +33,7 @@ class Budget {
 
   factory Budget.fromMap(Map<String, dynamic> map, String id) {
     return Budget(
-      category: map['category'] ?? '',
+      category: map['category']?.toString() ?? 'Other',
       limit: (map['limit'] ?? 0).toDouble(),
     );
   }

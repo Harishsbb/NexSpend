@@ -8,7 +8,8 @@ import '../theme/app_colors.dart';
 import 'package:intl/intl.dart';
 
 class AddExpenseScreen extends ConsumerStatefulWidget {
-  const AddExpenseScreen({super.key});
+  final Expense? initialExpense;
+  const AddExpenseScreen({super.key, this.initialExpense});
 
   @override
   ConsumerState<AddExpenseScreen> createState() => _AddExpenseScreenState();
@@ -22,8 +23,23 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   String _selectedCategory = 'Food';
   String? _selectedAccountId;
   DateTime _selectedDate = DateTime.now();
+  bool _isIncome = false;
 
   final List<String> _categories = ['Food', 'Travel', 'Shopping', 'Bills', 'Health', 'Entertainment', 'Other'];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialExpense != null) {
+      final e = widget.initialExpense!;
+      _amountController.text = e.amount.toString();
+      _noteController.text = e.note ?? '';
+      _selectedCategory = e.category;
+      _selectedAccountId = e.accountId;
+      _selectedDate = e.dateTime;
+      _isIncome = e.isIncome;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +48,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add Expense'),
+        title: Text(widget.initialExpense != null 
+            ? 'Edit Transaction' 
+            : (_isIncome ? 'Add Income' : 'Add Expense')),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -42,12 +60,41 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Center(
+                child: SegmentedButton<bool>(
+                  segments: const [
+                    ButtonSegment(
+                      value: false,
+                      label: Text('Expense'),
+                      icon: Icon(Icons.remove_circle_outline),
+                    ),
+                    ButtonSegment(
+                      value: true,
+                      label: Text('Income'),
+                      icon: Icon(Icons.add_circle_outline),
+                    ),
+                  ],
+                  selected: {_isIncome},
+                  onSelectionChanged: (Set<bool> newSelection) {
+                    setState(() => _isIncome = newSelection.first);
+                  },
+                  style: SegmentedButton.styleFrom(
+                    selectedBackgroundColor: _isIncome ? Colors.green : Colors.red,
+                    selectedForegroundColor: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
               const Text('Amount', style: TextStyle(color: Colors.grey, fontSize: 14)),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _amountController,
                 keyboardType: TextInputType.number,
-                style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 40, 
+                  fontWeight: FontWeight.bold,
+                  color: _isIncome ? Colors.green : (isDark ? Colors.white : Colors.black),
+                ),
                 decoration: InputDecoration(
                   prefixText: '₹ ',
                   border: InputBorder.none,
@@ -74,7 +121,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                     onSelected: (selected) {
                       if (selected) setState(() => _selectedCategory = cat);
                     },
-                    selectedColor: AppColors.primary,
+                    selectedColor: _isIncome ? Colors.green : AppColors.primary,
                     labelStyle: TextStyle(
                       color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
                     ),
@@ -85,7 +132,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               const Text('Account', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                initialValue: _selectedAccountId,
+                initialValue: accounts.any((acc) => acc.id == _selectedAccountId) ? _selectedAccountId : null,
                 hint: const Text('Select Bank Account'),
                 items: accounts.map((acc) {
                   return DropdownMenuItem(
@@ -130,7 +177,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.calendar_today, size: 20, color: AppColors.primary),
+                      Icon(Icons.calendar_today, size: 20, color: _isIncome ? Colors.green : AppColors.primary),
                       const SizedBox(width: 12),
                       Text(DateFormat('MMM dd, yyyy').format(_selectedDate)),
                     ],
@@ -159,7 +206,13 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               const SizedBox(height: 40),
               ElevatedButton(
                 onPressed: _saveExpense,
-                child: const Text('Save Expense', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _isIncome ? Colors.green : AppColors.primary,
+                ),
+                child: Text(
+                  widget.initialExpense != null ? 'Update Transaction' : (_isIncome ? 'Save Income' : 'Save Expense'), 
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)
+                ),
               ),
             ],
           ),
@@ -168,35 +221,66 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     );
   }
 
-  void _saveExpense() {
+  void _saveExpense() async {
     if (_formKey.currentState!.validate()) {
       final amount = double.parse(_amountController.text);
+      
+      // If editing, we revert the OLD balance change first
+      if (widget.initialExpense != null) {
+        final oldE = widget.initialExpense!;
+        final accounts = ref.read(accountProvider);
+        final oldAccount = accounts.firstWhere((acc) => acc.id == oldE.accountId);
+        
+        // REVERT old balance
+        final revertedBalance = oldE.isIncome 
+            ? oldAccount.balance - oldE.amount 
+            : oldAccount.balance + oldE.amount;
+        
+        await ref.read(accountProvider.notifier).addAccount(oldAccount.copyWith(balance: revertedBalance));
+      }
+
       final expense = Expense(
+        id: widget.initialExpense?.id, // Keep same ID if editing
         amount: amount,
         category: _selectedCategory,
         dateTime: _selectedDate,
         accountId: _selectedAccountId!,
         note: _noteController.text.isEmpty ? null : _noteController.text,
+        isIncome: _isIncome,
       );
 
-      ref.read(expenseProvider.notifier).addExpense(expense);
+      await ref.read(expenseProvider.notifier).addExpense(expense);
 
-      // Check if budget is exceeded
-      final budgets = ref.read(budgetProvider);
-      final budget = budgets.firstWhere((b) => b.category == _selectedCategory);
-      if (budget.currentSpending + amount > budget.limit) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('⚠️ Alert: You have exceeded your ${budget.category} budget!'),
-              backgroundColor: AppColors.error,
-              duration: const Duration(seconds: 5),
-            ),
-          );
+      // Apply NEW balance
+      final updatedAccounts = ref.read(accountProvider);
+      final account = updatedAccounts.firstWhere((acc) => acc.id == _selectedAccountId);
+      final newBalance = _isIncome 
+          ? account.balance + amount 
+          : account.balance - amount;
+      
+      await ref.read(accountProvider.notifier).addAccount(account.copyWith(balance: newBalance));
+
+      // Check if budget is exceeded (only for expenses)
+      if (!_isIncome) {
+        final budgets = ref.read(budgetProvider);
+        final budgetIndex = budgets.indexWhere((b) => b.category == _selectedCategory);
+        if (budgetIndex != -1) {
+          final budget = budgets[budgetIndex];
+          if (budget.currentSpending + amount > budget.limit) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('⚠️ Alert: You have exceeded your ${budget.category} budget!'),
+                  backgroundColor: AppColors.error,
+                  duration: const Duration(seconds: 5),
+                ),
+              );
+            }
+          }
         }
       }
 
-      Navigator.pop(context);
+      if (mounted) Navigator.pop(context);
     }
   }
 }

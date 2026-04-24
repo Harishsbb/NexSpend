@@ -2,10 +2,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/budget.dart';
 import '../models/expense.dart';
 import 'expense_provider.dart';
+import '../services/auth_service.dart';
 import 'account_provider.dart';
 
 final budgetStreamProvider = StreamProvider<List<Budget>>((ref) {
-  return ref.watch(databaseServiceProvider).getBudgets();
+  final userAsync = ref.watch(authStateProvider);
+  
+  return userAsync.when(
+    data: (user) {
+      if (user == null) return Stream.value([]);
+      final dbService = ref.read(databaseServiceProvider);
+      return dbService.getBudgets();
+    },
+    loading: () => const Stream.empty(),
+    error: (err, stack) => Stream.value([]),
+  );
 });
 
 class BudgetNotifier extends StateNotifier<List<Budget>> {
@@ -15,6 +26,9 @@ class BudgetNotifier extends StateNotifier<List<Budget>> {
     Budget(category: 'Travel', limit: 3000),
     Budget(category: 'Shopping', limit: 10000),
     Budget(category: 'Bills', limit: 15000),
+    Budget(category: 'Health', limit: 5000),
+    Budget(category: 'Entertainment', limit: 5000),
+    Budget(category: 'Other', limit: 2000),
   ]) {
     // Listen to firestore budgets
     ref.listen(budgetStreamProvider, (prev, next) {

@@ -1,12 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/bank_account.dart';
 import '../services/database_service.dart';
+import '../services/auth_service.dart';
 
 final databaseServiceProvider = Provider((ref) => DatabaseService());
 
 final accountStreamProvider = StreamProvider<List<BankAccount>>((ref) {
-  final dbService = ref.watch(databaseServiceProvider);
-  return dbService.getAccounts();
+  final userAsync = ref.watch(authStateProvider);
+  
+  return userAsync.when(
+    data: (user) {
+      if (user == null) return Stream.value([]);
+      final dbService = ref.read(databaseServiceProvider);
+      return dbService.getAccounts();
+    },
+    loading: () => const Stream.empty(),
+    error: (err, stack) => Stream.value([]),
+  );
 });
 
 class AccountNotifier extends StateNotifier<List<BankAccount>> {
@@ -18,6 +28,10 @@ class AccountNotifier extends StateNotifier<List<BankAccount>> {
 
   Future<void> addAccount(BankAccount account) async {
     await ref.read(databaseServiceProvider).addAccount(account);
+  }
+
+  Future<void> deleteAccount(String accountId) async {
+    await ref.read(databaseServiceProvider).deleteAccount(accountId);
   }
 
   double get totalBalance => state.fold(0, (sum, item) => sum + item.balance);

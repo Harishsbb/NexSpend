@@ -7,12 +7,14 @@ class AccountCard extends StatelessWidget {
   final BankAccount account;
   final int index;
   final VoidCallback onTap;
+  final VoidCallback? onDelete;
 
   const AccountCard({
     super.key,
     required this.account,
     required this.index,
     required this.onTap,
+    this.onDelete,
   });
 
   @override
@@ -50,10 +52,24 @@ class AccountCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              _getIcon(account.type),
-              color: Colors.white,
-              size: 28,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Icon(
+                  _getIcon(account.type),
+                  color: Colors.white,
+                  size: 28,
+                ),
+                if (onDelete != null)
+                  GestureDetector(
+                    onTap: onDelete,
+                    child: const Icon(
+                      Icons.delete_outline,
+                      color: Colors.white70,
+                      size: 20,
+                    ),
+                  ),
+              ],
             ),
             const Spacer(),
             Text(

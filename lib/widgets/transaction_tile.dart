@@ -6,11 +6,15 @@ import 'package:intl/intl.dart';
 class TransactionTile extends StatelessWidget {
   final Expense expense;
   final String accountName;
+  final VoidCallback? onTap;
+  final VoidCallback? onDelete;
 
   const TransactionTile({
     super.key,
     required this.expense,
     required this.accountName,
+    this.onTap,
+    this.onDelete,
   });
 
   @override
@@ -18,16 +22,41 @@ class TransactionTile extends StatelessWidget {
     final currencyFormat = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : AppColors.cardLight,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+    return GestureDetector(
+      onTap: onTap,
+      onLongPress: onDelete != null ? () {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Delete Transaction'),
+            content: const Text('Are you sure you want to delete this transaction? Your bank balance will be reverted.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  onDelete!();
+                  Navigator.pop(context);
+                },
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+        );
+      } : null,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.cardDark : AppColors.cardLight,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+          ),
         ),
-      ),
       child: Row(
         children: [
           Container(
@@ -68,9 +97,9 @@ class TransactionTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '- ${currencyFormat.format(expense.amount)}',
-                style: const TextStyle(
-                  color: AppColors.error,
+                '${expense.isIncome ? '+' : '-'} ${currencyFormat.format(expense.amount)}',
+                style: TextStyle(
+                  color: expense.isIncome ? Colors.green : AppColors.error,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
@@ -86,6 +115,7 @@ class TransactionTile extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 

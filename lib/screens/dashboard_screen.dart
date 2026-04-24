@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/auth_service.dart';
+import '../models/bank_account.dart';
 import '../providers/account_provider.dart';
 import '../providers/expense_provider.dart';
 import '../providers/budget_provider.dart';
@@ -121,10 +122,34 @@ class DashboardScreen extends ConsumerWidget {
                       ),
                       itemCount: accounts.length,
                       itemBuilder: (context, index) {
+                        final account = accounts[index];
                         return AccountCard(
-                          account: accounts[index],
+                          account: account,
                           index: index,
                           onTap: () {},
+                          onDelete: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Delete Account'),
+                                content: Text('Are you sure you want to delete "${account.name}"?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      ref.read(accountProvider.notifier).deleteAccount(account.id);
+                                      Navigator.pop(context);
+                                    },
+                                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                    child: const Text('Delete'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                         );
                       },
                     ),
@@ -143,9 +168,19 @@ class DashboardScreen extends ConsumerWidget {
                       ...expenses.take(5).map((e) {
                         final account = accounts.firstWhere(
                           (acc) => acc.id == e.accountId,
-                          orElse: () => accounts[0],
+                          orElse: () => accounts.isNotEmpty ? accounts[0] : BankAccount(name: 'Unknown', balance: 0, type: AccountType.wallet),
                         );
-                        return TransactionTile(expense: e, accountName: account.name);
+                        return TransactionTile(
+                          expense: e, 
+                          accountName: account.name,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AddExpenseScreen(initialExpense: e),
+                            ),
+                          ),
+                          onDelete: () => ref.read(expenseProvider.notifier).deleteExpense(e),
+                        );
                       }),
                     const SizedBox(height: 32),
                     _buildSectionHeader(

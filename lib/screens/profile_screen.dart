@@ -160,6 +160,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 Text(user?.email ?? 'Not set', style: const TextStyle(fontSize: 18, color: Colors.grey)),
                 Icons.email_outlined,
               ),
+              const SizedBox(height: 16),
+              _buildInfoCard(
+                'User ID (UID)',
+                SelectableText(user?.uid ?? 'Not available', style: const TextStyle(fontSize: 14, color: Colors.grey)),
+                Icons.fingerprint,
+              ),
               const SizedBox(height: 48),
               if (_isEditing)
                 ElevatedButton(

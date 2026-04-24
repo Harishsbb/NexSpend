@@ -26,10 +26,10 @@ class BankAccount {
 
   factory BankAccount.fromMap(Map<String, dynamic> map) {
     return BankAccount(
-      id: map['id'],
-      name: map['name'],
-      balance: map['balance'],
-      type: AccountType.values[map['type']],
+      id: map['id']?.toString() ?? const Uuid().v4(),
+      name: map['name']?.toString() ?? 'Unnamed Account',
+      balance: (map['balance'] ?? 0).toDouble(),
+      type: AccountType.values[(map['type'] ?? 0).toInt()],
     );
   }
 

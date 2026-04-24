@@ -7,6 +7,7 @@ class Expense {
   final DateTime dateTime;
   final String accountId;
   final String? note;
+  final bool isIncome;
 
   Expense({
     String? id,
@@ -15,6 +16,7 @@ class Expense {
     required this.dateTime,
     required this.accountId,
     this.note,
+    this.isIncome = false,
   }) : id = id ?? const Uuid().v4();
 
   Map<String, dynamic> toMap() {
@@ -25,17 +27,19 @@ class Expense {
       'dateTime': dateTime.toIso8601String(),
       'accountId': accountId,
       'note': note,
+      'isIncome': isIncome,
     };
   }
 
   factory Expense.fromMap(Map<String, dynamic> map) {
     return Expense(
-      id: map['id'],
-      amount: map['amount'],
-      category: map['category'],
-      dateTime: DateTime.parse(map['dateTime']),
-      accountId: map['accountId'],
-      note: map['note'],
+      id: map['id']?.toString() ?? const Uuid().v4(),
+      amount: (map['amount'] ?? 0).toDouble(),
+      category: map['category']?.toString() ?? 'Other',
+      dateTime: map['dateTime'] != null ? DateTime.parse(map['dateTime']) : DateTime.now(),
+      accountId: map['accountId']?.toString() ?? '',
+      note: map['note']?.toString(),
+      isIncome: map['isIncome'] ?? false,
     );
   }
 }

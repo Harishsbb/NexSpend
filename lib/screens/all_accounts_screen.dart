@@ -36,10 +36,34 @@ class AllAccountsScreen extends ConsumerWidget {
               ),
               itemCount: accounts.length,
               itemBuilder: (context, index) {
+                final account = accounts[index];
                 return AccountCard(
-                  account: accounts[index],
+                  account: account,
                   index: index,
                   onTap: () {},
+                  onDelete: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Delete Account'),
+                        content: Text('Are you sure you want to delete "${account.name}"?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              ref.read(accountProvider.notifier).deleteAccount(account.id);
+                              Navigator.pop(context);
+                            },
+                            style: TextButton.styleFrom(foregroundColor: Colors.red),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 );
               },
             ),

@@ -7,15 +7,16 @@ import '../models/budget.dart';
 
 class DatabaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final String? _uid = FirebaseAuth.instance.currentUser?.uid;
+  String? get _uid => FirebaseAuth.instance.currentUser?.uid;
 
   // --- Budgets ---
 
   Stream<List<Budget>> getBudgets() {
-    if (_uid == null) return Stream.value([]);
+    final uid = _uid;
+    if (uid == null) return Stream.value([]);
     return _db
         .collection('users')
-        .doc(_uid)
+        .doc(uid)
         .collection('budgets')
         .snapshots()
         .map((snapshot) => snapshot.docs
@@ -24,10 +25,11 @@ class DatabaseService {
   }
 
   Future<void> setBudget(Budget budget) async {
-    if (_uid == null) return;
+    final uid = _uid;
+    if (uid == null) return;
     final query = await _db
         .collection('users')
-        .doc(_uid)
+        .doc(uid)
         .collection('budgets')
         .where('category', isEqualTo: budget.category)
         .get();
@@ -37,7 +39,7 @@ class DatabaseService {
     } else {
       await _db
           .collection('users')
-          .doc(_uid)
+          .doc(uid)
           .collection('budgets')
           .add(budget.toMap());
     }
@@ -46,10 +48,11 @@ class DatabaseService {
   // --- Bank Accounts ---
 
   Stream<List<BankAccount>> getAccounts() {
-    if (_uid == null) return Stream.value([]);
+    final uid = _uid;
+    if (uid == null) return Stream.value([]);
     return _db
         .collection('users')
-        .doc(_uid)
+        .doc(uid)
         .collection('accounts')
         .snapshots()
         .map((snapshot) => snapshot.docs
@@ -58,20 +61,33 @@ class DatabaseService {
   }
 
   Future<void> addAccount(BankAccount account) async {
-    if (_uid == null) return;
+    final uid = _uid;
+    if (uid == null) return;
     await _db
         .collection('users')
-        .doc(_uid)
+        .doc(uid)
         .collection('accounts')
         .doc(account.id)
         .set(account.toMap());
   }
 
-  Future<void> updateAccount(BankAccount account) async {
-    if (_uid == null) return;
+  Future<void> deleteAccount(String accountId) async {
+    final uid = _uid;
+    if (uid == null) return;
     await _db
         .collection('users')
-        .doc(_uid)
+        .doc(uid)
+        .collection('accounts')
+        .doc(accountId)
+        .delete();
+  }
+
+  Future<void> updateAccount(BankAccount account) async {
+    final uid = _uid;
+    if (uid == null) return;
+    await _db
+        .collection('users')
+        .doc(uid)
         .collection('accounts')
         .doc(account.id)
         .update(account.toMap());
@@ -80,10 +96,11 @@ class DatabaseService {
   // --- Expenses ---
 
   Stream<List<Expense>> getExpenses() {
-    if (_uid == null) return Stream.value([]);
+    final uid = _uid;
+    if (uid == null) return Stream.value([]);
     return _db
         .collection('users')
-        .doc(_uid)
+        .doc(uid)
         .collection('expenses')
         .orderBy('dateTime', descending: true)
         .snapshots()
@@ -93,22 +110,45 @@ class DatabaseService {
   }
 
   Future<void> addExpense(Expense expense) async {
-    if (_uid == null) return;
+    final uid = _uid;
+    if (uid == null) return;
     await _db
         .collection('users')
-        .doc(_uid)
+        .doc(uid)
         .collection('expenses')
         .doc(expense.id)
         .set(expense.toMap());
+  }
+
+  Future<void> deleteExpense(Expense expense) async {
+    final uid = _uid;
+    if (uid == null) return;
     
-    // Also update account balance in a transaction for consistency
-    final accountRef = _db.collection('users').doc(_uid).collection('accounts').doc(expense.accountId);
-    
+    // Delete the transaction
+    await _db
+        .collection('users')
+        .doc(uid)
+        .collection('expenses')
+        .doc(expense.id)
+        .delete();
+
+    // REVERT the balance on the account
+    final accountRef = _db
+        .collection('users')
+        .doc(uid)
+        .collection('accounts')
+        .doc(expense.accountId);
+
     await _db.runTransaction((transaction) async {
       final accountSnapshot = await transaction.get(accountRef);
       if (accountSnapshot.exists) {
-        final currentBalance = accountSnapshot.data()?['balance'] ?? 0.0;
-        transaction.update(accountRef, {'balance': currentBalance - expense.amount});
+        final currentBalance = (accountSnapshot.data()?['balance'] ?? 0.0).toDouble();
+        // If it was income, subtract it back. If it was expense, add it back.
+        final revertedBalance = expense.isIncome 
+            ? currentBalance - expense.amount 
+            : currentBalance + expense.amount;
+        
+        transaction.update(accountRef, {'balance': revertedBalance});
       }
     });
   }

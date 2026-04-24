@@ -1,10 +1,20 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/expense.dart';
+import '../services/auth_service.dart';
 import 'account_provider.dart';
 
 final expenseStreamProvider = StreamProvider<List<Expense>>((ref) {
-  final dbService = ref.watch(databaseServiceProvider);
-  return dbService.getExpenses();
+  final userAsync = ref.watch(authStateProvider);
+  
+  return userAsync.when(
+    data: (user) {
+      if (user == null) return Stream.value([]);
+      final dbService = ref.read(databaseServiceProvider);
+      return dbService.getExpenses();
+    },
+    loading: () => const Stream.empty(),
+    error: (err, stack) => Stream.value([]),
+  );
 });
 
 class ExpenseNotifier extends StateNotifier<List<Expense>> {
@@ -17,9 +27,8 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
     await ref.read(databaseServiceProvider).addExpense(expense);
   }
 
-  void deleteExpense(Expense expense) {
-    // Implement delete in database_service.dart if needed
-    state = state.where((e) => e.id != expense.id).toList();
+  Future<void> deleteExpense(Expense expense) async {
+    await ref.read(databaseServiceProvider).deleteExpense(expense);
   }
 }
 
