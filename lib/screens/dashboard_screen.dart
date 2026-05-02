@@ -28,7 +28,9 @@ class DashboardScreen extends ConsumerWidget {
     final accounts = ref.watch(accountProvider);
     final expenses = ref.watch(expenseProvider);
     final budgets = ref.watch(budgetProvider);
-    final totalBalance = ref.watch(accountProvider.notifier).totalBalance;
+    final expenseBudgets = budgets.where((b) => !b.isIncome).toList();
+    final incomeBudgets = budgets.where((b) => b.isIncome).toList();
+    final totalBalance = ref.read(accountProvider.notifier).totalBalance;
     
     final currencyFormat = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
 
@@ -186,14 +188,24 @@ class DashboardScreen extends ConsumerWidget {
                       }),
                     const SizedBox(height: 32),
                     _buildSectionHeader(
-                    'Budgets', 
+                    'Expense Budgets', 
                     () => Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const AllBudgetsScreen()),
                     ),
                   ),
                     const SizedBox(height: 16),
-                    ...budgets.map((b) => _buildBudgetCard(context, b, ref)),
+                    ...expenseBudgets.take(3).map((b) => _buildBudgetCard(context, b, ref)),
+                    const SizedBox(height: 24),
+                    _buildSectionHeader(
+                    'Income Targets', 
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const AllBudgetsScreen()),
+                    ),
+                  ),
+                    const SizedBox(height: 16),
+                    ...incomeBudgets.take(3).map((b) => _buildBudgetCard(context, b, ref)),
                     const SizedBox(height: 100), // Space for FAB
                   ],
                 ),
@@ -265,11 +277,17 @@ class DashboardScreen extends ConsumerWidget {
   }  Widget _buildBudgetCard(BuildContext context, dynamic budget, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final progress = budget.progress;
-    final color = budget.isExceeded 
-        ? AppColors.error 
-        : budget.isNearingLimit 
-            ? AppColors.warning 
-            : AppColors.success;
+    
+    Color color;
+    if (budget.isIncome) {
+      color = budget.isAchieved ? AppColors.success : AppColors.primary;
+    } else {
+      color = budget.isExceeded 
+          ? AppColors.error 
+          : budget.isNearingLimit 
+              ? AppColors.warning 
+              : AppColors.success;
+    }
 
     return GestureDetector(
       onTap: () => _showEditBudgetDialog(context, budget, ref),
@@ -290,7 +308,7 @@ class DashboardScreen extends ConsumerWidget {
               children: [
                 Text(budget.category, style: const TextStyle(fontWeight: FontWeight.bold)),
                 Text(
-                  '${NumberFormat.compact().format(budget.currentSpending)} / ${NumberFormat.compact().format(budget.limit)}',
+                  '${NumberFormat.compact().format(budget.currentAmount)} / ${NumberFormat.compact().format(budget.limit)}',
                   style: TextStyle(color: color, fontWeight: FontWeight.bold),
                 ),
               ],
@@ -305,7 +323,7 @@ class DashboardScreen extends ConsumerWidget {
                 minHeight: 8,
               ),
             ),
-            if (budget.isNearingLimit) ...[
+            if (!budget.isIncome && budget.isNearingLimit) ...[
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -314,6 +332,19 @@ class DashboardScreen extends ConsumerWidget {
                   Text(
                     budget.isExceeded ? 'Limit exceeded!' : 'Approaching limit',
                     style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ],
+            if (budget.isIncome && budget.isAchieved) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.check_circle_outline, size: 14, color: AppColors.success),
+                  const SizedBox(width: 4),
+                  const Text(
+                    'Target achieved!',
+                    style: TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.w500),
                   ),
                 ],
               ),
@@ -344,7 +375,7 @@ class DashboardScreen extends ConsumerWidget {
             onPressed: () {
               final limit = double.tryParse(controller.text);
               if (limit != null) {
-                ref.read(budgetProvider.notifier).updateLimit(budget.category, limit);
+                ref.read(budgetProvider.notifier).updateLimit(budget.category, limit, budget.isIncome);
                 Navigator.pop(context);
               }
             },

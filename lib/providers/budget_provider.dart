@@ -22,13 +22,18 @@ final budgetStreamProvider = StreamProvider<List<Budget>>((ref) {
 class BudgetNotifier extends StateNotifier<List<Budget>> {
   final Ref ref;
   BudgetNotifier(this.ref) : super([
-    Budget(category: 'Food', limit: 5000),
-    Budget(category: 'Travel', limit: 3000),
-    Budget(category: 'Shopping', limit: 10000),
-    Budget(category: 'Bills', limit: 15000),
-    Budget(category: 'Health', limit: 5000),
-    Budget(category: 'Entertainment', limit: 5000),
-    Budget(category: 'Other', limit: 2000),
+    // Expense Budgets
+    Budget(category: 'Food', limit: 5000, isIncome: false),
+    Budget(category: 'Travel', limit: 3000, isIncome: false),
+    Budget(category: 'Shopping', limit: 10000, isIncome: false),
+    Budget(category: 'Bills', limit: 15000, isIncome: false),
+    Budget(category: 'Health', limit: 5000, isIncome: false),
+    Budget(category: 'Entertainment', limit: 5000, isIncome: false),
+    Budget(category: 'Other', limit: 2000, isIncome: false),
+    // Income Budgets (Targets)
+    Budget(category: 'Salary', limit: 50000, isIncome: true),
+    Budget(category: 'Freelance', limit: 10000, isIncome: true),
+    Budget(category: 'Investments', limit: 5000, isIncome: true),
   ]) {
     // Listen to firestore budgets
     ref.listen(budgetStreamProvider, (prev, next) {
@@ -49,7 +54,7 @@ class BudgetNotifier extends StateNotifier<List<Budget>> {
     state = [
       for (final b in state)
         firestoreBudgets.firstWhere(
-          (fb) => fb.category == b.category,
+          (fb) => fb.category == b.category && fb.isIncome == b.isIncome,
           orElse: () => b,
         )
     ];
@@ -60,15 +65,15 @@ class BudgetNotifier extends StateNotifier<List<Budget>> {
     state = [
       for (final budget in state)
         budget.copyWith(
-          currentSpending: expenses
-              .where((e) => e.category == budget.category)
+          currentAmount: expenses
+              .where((e) => e.category == budget.category && e.isIncome == budget.isIncome)
               .fold<double>(0.0, (sum, e) => sum + e.amount),
         )
     ];
   }
 
-  Future<void> updateLimit(String category, double limit) async {
-    final budget = state.firstWhere((b) => b.category == category).copyWith(limit: limit);
+  Future<void> updateLimit(String category, double limit, bool isIncome) async {
+    final budget = state.firstWhere((b) => b.category == category && b.isIncome == isIncome).copyWith(limit: limit);
     await ref.read(databaseServiceProvider).setBudget(budget);
   }
 }

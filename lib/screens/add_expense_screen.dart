@@ -266,7 +266,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         final budgetIndex = budgets.indexWhere((b) => b.category == _selectedCategory);
         if (budgetIndex != -1) {
           final budget = budgets[budgetIndex];
-          if (budget.currentSpending + amount > budget.limit) {
+          if (budget.currentAmount + amount > budget.limit) {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(

@@ -32,6 +32,7 @@ class DatabaseService {
         .doc(uid)
         .collection('budgets')
         .where('category', isEqualTo: budget.category)
+        .where('isIncome', isEqualTo: budget.isIncome)
         .get();
 
     if (query.docs.isNotEmpty) {
