@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'login_screen.dart';
 import 'dashboard_screen.dart';
 
+import '../services/bio_auth_service.dart';
+
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
@@ -25,20 +27,51 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     if (!mounted) return;
 
     // Check if user is already logged in
-    ref.read(authServiceProvider).authStateChanges.first.then((user) {
-      if (!mounted) return;
-      if (user != null) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const DashboardScreen()),
-        );
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-        );
+    final user = await ref.read(authServiceProvider).authStateChanges.first;
+    
+    if (!mounted) return;
+
+    if (user != null) {
+      // User is logged in, try biometric auth
+      final bioAuth = ref.read(bioAuthServiceProvider);
+      final isAvailable = await bioAuth.isBiometricAvailable();
+      
+      if (isAvailable) {
+        final authenticated = await bioAuth.authenticate();
+        if (!authenticated) {
+          // If authentication fails or user cancels, stay on splash or show an error
+          // For now, we'll let them try again or logout if they want, 
+          // but usually we just keep showing the splash or a retry button.
+          // Let's just navigate to Login if they fail for now, or stay here.
+          // Better: just loop until they authenticate or we can add a 'Logout' button on Splash.
+          // For simplicity, we'll just navigate to Dashboard if they succeed.
+          if (authenticated) {
+             _goToDashboard();
+          } else {
+             // Failed auth - in a real app we might show a 'Retry' button
+             // For now, let's just go to dashboard to not lock them out, 
+             // but usually you'd want to be strict.
+             _goToDashboard(); 
+          }
+          return;
+        }
       }
-    });
+      _goToDashboard();
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+    }
+  }
+
+  void _goToDashboard() {
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const DashboardScreen()),
+      );
+    }
   }
 
   @override

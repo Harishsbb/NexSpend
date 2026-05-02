@@ -141,7 +141,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                       ? const SizedBox(
                           height: 20,
                           width: 20,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          child: CircularProgressIndicator.adaptive(
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
                         )
                       : const Text('Create Account', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   ),

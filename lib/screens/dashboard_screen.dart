@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/auth_service.dart';
 import '../models/bank_account.dart';
@@ -127,29 +128,30 @@ class DashboardScreen extends ConsumerWidget {
                           account: account,
                           index: index,
                           onTap: () {},
-                          onDelete: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('Delete Account'),
-                                content: Text('Are you sure you want to delete "${account.name}"?'),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      ref.read(accountProvider.notifier).deleteAccount(account.id);
-                                      Navigator.pop(context);
-                                    },
-                                    style: TextButton.styleFrom(foregroundColor: Colors.red),
-                                    child: const Text('Delete'),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
+                        onDelete: () {
+                          showAdaptiveDialog(
+                            context: context,
+                            builder: (context) => AlertDialog.adaptive(
+                              title: const Text('Delete Account'),
+                              content: Text('Are you sure you want to delete "${account.name}"?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    HapticFeedback.mediumImpact();
+                                    ref.read(accountProvider.notifier).deleteAccount(account.id);
+                                    Navigator.pop(context);
+                                  },
+                                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                  child: const Text('Delete'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                         );
                       },
                     ),
@@ -200,17 +202,20 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
         floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const AddExpenseScreen()),
-          ),
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AddExpenseScreen()),
+            );
+          },
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           icon: const Icon(Icons.add),
           label: const Text('Add Expense'),
         ),
       ),
-      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator.adaptive())),
       error: (err, stack) => Scaffold(body: Center(child: Text('Error: $err'))),
     );
   }

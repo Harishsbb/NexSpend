@@ -125,7 +125,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: AppColors.primary),
                           )
                         : _isPhotoLoading 
-                          ? const CircularProgressIndicator() 
+                          ? const CircularProgressIndicator.adaptive() 
                           : null,
                     ),
                     Positioned(
@@ -171,7 +171,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ElevatedButton(
                   onPressed: _isLoading ? null : _handleUpdate,
                   child: _isLoading 
-                    ? const CircularProgressIndicator(color: Colors.white)
+                    ? const CircularProgressIndicator.adaptive(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      )
                     : const Text('Save Changes'),
                 ),
               const SizedBox(height: 16),
@@ -194,7 +196,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ),
       ),
-      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator.adaptive())),
       error: (err, stack) => Scaffold(body: Center(child: Text('Error: $err'))),
     );
   }

@@ -49,6 +49,19 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app requires access to your photo library to let you upload profile pictures and receipt images.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app requires access to your camera to let you take photos of receipts and profile pictures.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app requires access to your microphone if you choose to record videos for your transactions.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>This app uses FaceID to provide a secure and quick way to access your financial data.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
