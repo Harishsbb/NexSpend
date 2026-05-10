@@ -51,6 +51,10 @@ dependencies:
   firebase_storage: ^12.4.10
   file_picker: ^11.0.2
   local_auth: ^3.0.1
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.9.4
+  flutter_timezone: ^1.0.4
+  shared_preferences: ^2.3.3
 
 dev_dependencies:
   flutter_test:

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import '../theme/app_colors.dart';
 import '../services/auth_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'login_screen.dart';
 import 'dashboard_screen.dart';
-
 import '../services/bio_auth_service.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -23,41 +24,50 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<void> _navigateToHome() async {
+    print('Splash: Starting navigation check...');
     await Future.delayed(const Duration(seconds: 3));
     if (!mounted) return;
 
-    // Check if user is already logged in
-    final user = await ref.read(authServiceProvider).authStateChanges.first;
+    print('Splash: Checking auth state...');
+    // Check if user is already logged in with a timeout to prevent hanging
+    User? user;
+    try {
+      user = await ref.read(authServiceProvider).authStateChanges.first.timeout(
+        const Duration(seconds: 5),
+      );
+    } catch (e) {
+      print('Splash: Auth state check timed out or failed: $e');
+      user = null; // Fallback to login if it hangs
+    }
     
+    print('Splash: User is ${user?.email ?? "null"}');
     if (!mounted) return;
 
     if (user != null) {
+      print('Splash: User logged in, checking biometrics...');
       // User is logged in, try biometric auth
       final bioAuth = ref.read(bioAuthServiceProvider);
-      final isAvailable = await bioAuth.isBiometricAvailable();
-      
-      if (isAvailable) {
-        final authenticated = await bioAuth.authenticate();
-        if (!authenticated) {
-          // If authentication fails or user cancels, stay on splash or show an error
-          // For now, we'll let them try again or logout if they want, 
-          // but usually we just keep showing the splash or a retry button.
-          // Let's just navigate to Login if they fail for now, or stay here.
-          // Better: just loop until they authenticate or we can add a 'Logout' button on Splash.
-          // For simplicity, we'll just navigate to Dashboard if they succeed.
-          if (authenticated) {
-             _goToDashboard();
-          } else {
-             // Failed auth - in a real app we might show a 'Retry' button
-             // For now, let's just go to dashboard to not lock them out, 
-             // but usually you'd want to be strict.
-             _goToDashboard(); 
+      try {
+        final isAvailable = await bioAuth.isBiometricAvailable().timeout(const Duration(seconds: 3));
+        print('Splash: Biometric available: $isAvailable');
+        
+        if (isAvailable && !kIsWeb) { // Biometrics on web can be flaky, skipping for now if it hangs
+          print('Splash: Authenticating with biometrics...');
+          final authenticated = await bioAuth.authenticate().timeout(const Duration(seconds: 10));
+          print('Splash: Authenticated: $authenticated');
+          if (!authenticated) {
+            print('Splash: Biometric auth failed');
+            // For now, we'll let them through to not lock them out during dev
+            _goToDashboard();
+            return;
           }
-          return;
         }
+      } catch (e) {
+        print('Splash: Biometric check failed or timed out: $e');
       }
       _goToDashboard();
     } else {
+      print('Splash: Navigating to LoginScreen');
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const LoginScreen()),

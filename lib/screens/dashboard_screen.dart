@@ -18,6 +18,7 @@ import 'all_transactions_screen.dart';
 import 'all_budgets_screen.dart';
 
 import 'profile_screen.dart';
+import 'settings_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -85,6 +86,13 @@ class DashboardScreen extends ConsumerWidget {
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const AnalyticsScreen()),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const SettingsScreen()),
                   ),
                 ),
                 IconButton(
