@@ -24,50 +24,34 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<void> _navigateToHome() async {
-    print('Splash: Starting navigation check...');
     await Future.delayed(const Duration(seconds: 3));
     if (!mounted) return;
 
-    print('Splash: Checking auth state...');
-    // Check if user is already logged in with a timeout to prevent hanging
     User? user;
     try {
       user = await ref.read(authServiceProvider).authStateChanges.first.timeout(
         const Duration(seconds: 5),
       );
     } catch (e) {
-      print('Splash: Auth state check timed out or failed: $e');
-      user = null; // Fallback to login if it hangs
+      user = null;
     }
-    
-    print('Splash: User is ${user?.email ?? "null"}');
+
     if (!mounted) return;
 
     if (user != null) {
-      print('Splash: User logged in, checking biometrics...');
-      // User is logged in, try biometric auth
       final bioAuth = ref.read(bioAuthServiceProvider);
       try {
         final isAvailable = await bioAuth.isBiometricAvailable().timeout(const Duration(seconds: 3));
-        print('Splash: Biometric available: $isAvailable');
-        
-        if (isAvailable && !kIsWeb) { // Biometrics on web can be flaky, skipping for now if it hangs
-          print('Splash: Authenticating with biometrics...');
+        if (isAvailable && !kIsWeb) {
           final authenticated = await bioAuth.authenticate().timeout(const Duration(seconds: 10));
-          print('Splash: Authenticated: $authenticated');
           if (!authenticated) {
-            print('Splash: Biometric auth failed');
-            // For now, we'll let them through to not lock them out during dev
             _goToDashboard();
             return;
           }
         }
-      } catch (e) {
-        print('Splash: Biometric check failed or timed out: $e');
-      }
+      } catch (_) {}
       _goToDashboard();
     } else {
-      print('Splash: Navigating to LoginScreen');
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const LoginScreen()),
