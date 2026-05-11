@@ -12,7 +12,12 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  await NotificationService.initialize();
+  try {
+    await NotificationService.initialize()
+        .timeout(const Duration(seconds: 5));
+    await NotificationService.scheduleFromPrefs()
+        .timeout(const Duration(seconds: 5));
+  } catch (_) {}
 
   runApp(
     const ProviderScope(

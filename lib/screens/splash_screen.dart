@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'login_screen.dart';
 import 'dashboard_screen.dart';
 import '../services/bio_auth_service.dart';
+import '../services/notification_service.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -20,6 +21,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
+    NotificationService.requestPermissions();
     _navigateToHome();
   }
 

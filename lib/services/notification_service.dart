@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz;
 
@@ -27,12 +28,38 @@ class NotificationService {
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     await _plugin.initialize(const InitializationSettings(android: android));
 
-    await _plugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestNotificationsPermission();
-
     _initialized = true;
+  }
+
+  static Future<void> requestPermissions() async {
+    if (kIsWeb || !_initialized) return;
+    try {
+      final androidImpl = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      await androidImpl?.requestNotificationsPermission();
+      await androidImpl?.requestExactAlarmsPermission();
+    } catch (_) {}
+  }
+
+  /// Re-reads saved prefs and reschedules notifications. Call at every app startup.
+  static Future<void> scheduleFromPrefs() async {
+    if (kIsWeb) return;
+    final prefs = await SharedPreferences.getInstance();
+    await scheduleDailyNotifications(
+      enabled: prefs.getBool('notif_enabled') ?? true,
+      morningTime: TimeOfDay(
+        hour: prefs.getInt('notif_morning_h') ?? 9,
+        minute: prefs.getInt('notif_morning_m') ?? 0,
+      ),
+      eveningTime: TimeOfDay(
+        hour: prefs.getInt('notif_evening_h') ?? 17,
+        minute: prefs.getInt('notif_evening_m') ?? 0,
+      ),
+      nightTime: TimeOfDay(
+        hour: prefs.getInt('notif_night_h') ?? 21,
+        minute: prefs.getInt('notif_night_m') ?? 0,
+      ),
+    );
   }
 
   static Future<void> scheduleDailyNotifications({
