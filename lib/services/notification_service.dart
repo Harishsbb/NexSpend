@@ -19,11 +19,11 @@ class NotificationService {
 
   static Future<void> initialize() async {
     if (_initialized || kIsWeb) return;
-    print('NotificationService: Initializing NotificationService...');
+    debugPrint('NotificationService: Initializing NotificationService...');
 
     tz.initializeTimeZones();
     try {
-      print('NotificationService: Fetching local timezone...');
+      debugPrint('NotificationService: Fetching local timezone...');
       final dynamic tzInfo = await FlutterTimezone.getLocalTimezone()
           .timeout(const Duration(seconds: 2));
       String id;
@@ -33,28 +33,28 @@ class NotificationService {
         id = tzInfo.identifier.toString();
       }
       tz.setLocalLocation(tz.getLocation(id));
-      print('NotificationService: Local timezone set to $id');
+      debugPrint('NotificationService: Local timezone set to $id');
     } catch (e) {
-      print('NotificationService: Error getting timezone, falling back to UTC: $e');
+      debugPrint('NotificationService: Error getting timezone, falling back to UTC: $e');
       tz.setLocalLocation(tz.UTC);
     }
 
     const android = AndroidInitializationSettings('ic_notification');
     try {
-      print('NotificationService: Initializing local notifications plugin...');
+      debugPrint('NotificationService: Initializing local notifications plugin...');
       await _plugin.initialize(
         const InitializationSettings(android: android),
         onDidReceiveNotificationResponse: (details) {
-          print('NotificationService: onDidReceiveNotificationResponse: ${details.payload} / ${details.actionId}');
+          debugPrint('NotificationService: onDidReceiveNotificationResponse: ${details.payload} / ${details.actionId}');
           if (details.payload == actionAdd || details.actionId == actionAdd) {
             // Handle navigation or action here
             // This will be connected to the app UI
           }
         },
       );
-      print('NotificationService plugin initialized successfully');
+      debugPrint('NotificationService plugin initialized successfully');
     } catch (e, s) {
-      print('NotificationService plugin initialization failed: $e\n$s');
+      debugPrint('NotificationService plugin initialization failed: $e\n$s');
       rethrow;
     }
 
@@ -63,22 +63,22 @@ class NotificationService {
 
   static Future<void> requestPermissions() async {
     if (kIsWeb) return;
-    print('NotificationService: requestPermissions called');
+    debugPrint('NotificationService: requestPermissions called');
     if (!_initialized) {
-      print('NotificationService: requestPermissions called before initialization, initializing first...');
+      debugPrint('NotificationService: requestPermissions called before initialization, initializing first...');
       await initialize();
     }
     try {
       final androidImpl = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
-      print('NotificationService: requesting POST_NOTIFICATIONS permission...');
+      debugPrint('NotificationService: requesting POST_NOTIFICATIONS permission...');
       final granted = await androidImpl?.requestNotificationsPermission();
-      print('NotificationService: POST_NOTIFICATIONS permission granted: $granted');
-      print('NotificationService: requesting EXACT_ALARMS permission...');
+      debugPrint('NotificationService: POST_NOTIFICATIONS permission granted: $granted');
+      debugPrint('NotificationService: requesting EXACT_ALARMS permission...');
       final exactGranted = await androidImpl?.requestExactAlarmsPermission();
-      print('NotificationService: EXACT_ALARMS permission granted: $exactGranted');
+      debugPrint('NotificationService: EXACT_ALARMS permission granted: $exactGranted');
     } catch (e, s) {
-      print('NotificationService: ERROR requesting permissions: $e\n$s');
+      debugPrint('NotificationService: ERROR requesting permissions: $e\n$s');
     }
   }
 

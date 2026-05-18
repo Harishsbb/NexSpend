@@ -1,6 +1,6 @@
-import 'dart:typed_data';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AuthService {
@@ -21,8 +21,8 @@ class AuthService {
     final cleanFileName = 'profile_${DateTime.now().millisecondsSinceEpoch}.$extension';
     final ref = _storage.ref().child('user_photos').child(user.uid).child(cleanFileName);
 
-    print('Firebase Storage: Attempting upload to bucket: ${_storage.app.options.storageBucket}');
-    print('Firebase Storage: Full path: ${ref.fullPath}');
+    debugPrint('Firebase Storage: Attempting upload to bucket: ${_storage.app.options.storageBucket}');
+    debugPrint('Firebase Storage: Full path: ${ref.fullPath}');
     
     try {
       // Upload with content type metadata and a 15-second timeout to prevent silent hangs on CORS/network errors
@@ -41,17 +41,17 @@ class AuthService {
 
       // Use the original ref (not snapshot.ref) to get download URL
       final url = await ref.getDownloadURL();
-      print('Firebase Storage: Upload successful! Download URL: $url');
+      debugPrint('Firebase Storage: Upload successful! Download URL: $url');
       
       await user.updatePhotoURL(url);
       await user.reload();
     } on FirebaseException catch (e, stack) {
-      print('Firebase Storage ERROR: [${e.code}] ${e.message}');
-      print('Firebase Storage StackTrace: $stack');
+      debugPrint('Firebase Storage ERROR: [${e.code}] ${e.message}');
+      debugPrint('Firebase Storage StackTrace: $stack');
       rethrow;
     } catch (e, stack) {
-      print('General ERROR during photo upload: $e');
-      print('StackTrace: $stack');
+      debugPrint('General ERROR during photo upload: $e');
+      debugPrint('StackTrace: $stack');
       rethrow;
     }
   }

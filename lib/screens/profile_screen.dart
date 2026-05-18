@@ -84,7 +84,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final userAsync = ref.watch(authStateProvider);
 
     return userAsync.when(
-      data: (user) => Scaffold(
+      data: (user) {
+        final displayName = user?.displayName;
+        final initials = (displayName != null && displayName.isNotEmpty)
+            ? displayName[0].toUpperCase()
+            : 'U';
+        return Scaffold(
         appBar: AppBar(
           title: const Text('My Profile'),
           actions: [
@@ -154,9 +159,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                     color: AppColors.primary.withValues(alpha: 0.1),
                                     alignment: Alignment.center,
                                     child: Text(
-                                      (user?.displayName ?? 'U').isNotEmpty
-                                          ? user!.displayName![0].toUpperCase()
-                                          : 'U',
+                                      initials,
                                       style: const TextStyle(
                                         fontSize: 40,
                                         fontWeight: FontWeight.bold,
@@ -173,9 +176,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 color: AppColors.primary.withValues(alpha: 0.1),
                                 alignment: Alignment.center,
                                 child: Text(
-                                  (user?.displayName ?? 'U').isNotEmpty
-                                      ? user!.displayName![0].toUpperCase()
-                                      : 'U',
+                                  initials,
                                   style: const TextStyle(
                                     fontSize: 40,
                                     fontWeight: FontWeight.bold,
@@ -274,7 +275,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ],
           ),
         ),
-      ),
+      );
+      },
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator.adaptive())),
       error: (err, stack) => Scaffold(body: Center(child: Text('Error: $err'))),
     );
