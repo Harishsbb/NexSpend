@@ -22,7 +22,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _initNotifications();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initNotifications();
+    });
     _navigateToHome();
   }
 
