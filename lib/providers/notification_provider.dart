@@ -87,6 +87,12 @@ class NotificationNotifier extends StateNotifier<NotificationSettings> {
   Future<void> setEnabled(bool value) async {
     state = state.copyWith(enabled: value);
     await _save();
+    if (value) {
+      // Prompt for OS-level permissions when turning ON in case they were disabled/not granted yet
+      await NotificationService.requestPermissions();
+      // Show an immediate welcome test notification to prove it works and show off rich styling
+      await NotificationService.showTestNotification();
+    }
     await _apply();
   }
 

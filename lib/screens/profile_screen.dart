@@ -111,32 +111,111 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               Center(
                 child: Stack(
                   children: [
-                    CircleAvatar(
-                      radius: 60,
-                      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                      backgroundImage: user?.photoURL != null 
-                        ? NetworkImage(user!.photoURL!) 
-                        : null,
-                      child: (user?.photoURL == null && !_isPhotoLoading)
-                        ? Text(
-                            (user?.displayName ?? 'U').isNotEmpty 
-                              ? user!.displayName![0].toUpperCase() 
-                              : 'U',
-                            style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: AppColors.primary),
-                          )
-                        : _isPhotoLoading 
-                          ? const CircularProgressIndicator.adaptive() 
-                          : null,
+                    Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 12,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(60),
+                        child: Stack(
+                          children: [
+                            // Base profile/initials or image
+                            if (user?.photoURL != null)
+                              Image.network(
+                                user!.photoURL!,
+                                width: 120,
+                                height: 120,
+                                fit: BoxFit.cover,
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Container(
+                                    width: 120,
+                                    height: 120,
+                                    color: AppColors.primary.withValues(alpha: 0.05),
+                                    child: const Center(
+                                      child: CircularProgressIndicator.adaptive(),
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) {
+                                  // Fallback to initials if the NetworkImage fails (e.g. CORS block)
+                                  return Container(
+                                    width: 120,
+                                    height: 120,
+                                    color: AppColors.primary.withValues(alpha: 0.1),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      (user?.displayName ?? 'U').isNotEmpty
+                                          ? user!.displayName![0].toUpperCase()
+                                          : 'U',
+                                      style: const TextStyle(
+                                        fontSize: 40,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              )
+                            else
+                              Container(
+                                width: 120,
+                                height: 120,
+                                color: AppColors.primary.withValues(alpha: 0.1),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  (user?.displayName ?? 'U').isNotEmpty
+                                      ? user!.displayName![0].toUpperCase()
+                                      : 'U',
+                                  style: const TextStyle(
+                                    fontSize: 40,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                            
+                            // Uploading Overlay
+                            if (_isPhotoLoading)
+                              Container(
+                                width: 120,
+                                height: 120,
+                                color: Colors.black.withValues(alpha: 0.4),
+                                child: const Center(
+                                  child: CircularProgressIndicator.adaptive(
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                     Positioned(
                       bottom: 0,
                       right: 0,
                       child: GestureDetector(
-                        onTap: _pickImage,
+                        onTap: _isPhotoLoading ? null : _pickImage,
                         child: Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                          child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                         ),
                       ),
                     ),

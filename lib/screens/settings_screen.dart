@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/notification_provider.dart';
+import '../services/notification_service.dart';
 import '../theme/app_colors.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -80,6 +81,8 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     _buildInfoBanner(),
+                    const SizedBox(height: 24),
+                    _buildTestButton(),
                   ],
                   const SizedBox(height: 40),
                 ],
@@ -296,6 +299,23 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTestButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () => NotificationService.showTestNotification(),
+        icon: const Icon(Icons.send_rounded, size: 18),
+        label: const Text('Send Test Notification'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          side: const BorderSide(color: AppColors.primary),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../services/auth_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,8 +22,20 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    NotificationService.requestPermissions();
+    _initNotifications();
     _navigateToHome();
+  }
+
+  Future<void> _initNotifications() async {
+    await NotificationService.requestPermissions();
+    final prefs = await SharedPreferences.getInstance();
+    final hasShownWelcome = prefs.getBool('has_shown_welcome_notif') ?? false;
+    if (!hasShownWelcome && !kIsWeb) {
+      // Delay slightly to give time for permission acceptance and smooth rendering
+      await Future.delayed(const Duration(seconds: 4));
+      await NotificationService.showTestNotification();
+      await prefs.setBool('has_shown_welcome_notif', true);
+    }
   }
 
   Future<void> _navigateToHome() async {

@@ -17,7 +17,9 @@ void main() async {
         .timeout(const Duration(seconds: 5));
     await NotificationService.scheduleFromPrefs()
         .timeout(const Duration(seconds: 5));
-  } catch (_) {}
+  } catch (e, stack) {
+    debugPrint('NOTIFICATION ERROR during main init: $e\n$stack');
+  }
 
   runApp(
     const ProviderScope(
