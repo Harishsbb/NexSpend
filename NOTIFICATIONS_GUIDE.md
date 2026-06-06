@@ -1,52 +1,35 @@
-# NexSpend Notification & Reminder Setup Guide
+# NexSpend Notification & Reminder System Guide
 
-This document summarizes the fixes and enhancements made to the notification system to ensure reliable and "Better than MMS" reminders.
-
----
-
-## 🛠 Fixes Implemented
-
-### 1. Timezone Synchronization
-Fixed a bug where the app was falling back to **UTC** instead of your local timezone (+05:30). This was causing notifications to be 5.5 hours late.
-- **File**: `lib/services/notification_service.dart`
-- **Fix**: Correctly handling the `TimezoneInfo` object returned by the device.
-
-### 2. Android Background Receivers
-Fixed a package naming bug where the background receivers were using `flutter_local_notifications` (with underscores) instead of `flutterlocalnotifications` (no underscores). Without this exact class path, Android was unable to register the receivers and silently ignored all scheduled reminders.
-- **File**: `android/app/src/main/AndroidManifest.xml`
-- **Fix**: Reconfigured `com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver` and `com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver` correctly.
+This document summarizes the simplified, robust, and platform-safe local notification system implemented for the NexSpend application.
 
 ---
 
-## 🌟 Enhanced "Rich" Notifications
-We upgraded the system to provide a premium, multimedia experience similar to MMS but interactive.
+## 🛠 Features of the Corrected Notification System
 
-### Features:
-- **Visual Banners**: Beautiful 3D glassmorphism banners included in every reminder.
-- **Quick Actions**: Buttons on the notification to "Add Expense" or "Dismiss" without opening the app.
-- **Test Mode**: A dedicated button in Settings to verify everything is working.
+1. **Flawless Multi-Platform Support**:
+   - **Android**: Supports high-priority notifications with direct integration using standard system channels.
+   - **iOS**: Configured with full support for Apple's `DarwinNotificationSettings` to ensure notifications are scheduled and displayed reliably.
 
----
+2. **Clean Timezone Synchronization**:
+   - Dynamically checks the device's current local timezone.
+   - Schedules reminders in the user's exact local time (preventing the UTC offset bug where reminders were 5.5 hours late).
+   - Gracefully falls back to UTC if the local database can't be reached.
 
-## 📋 How to Test & Maintain
+3. **High Reliability & Performance**:
+   - Removed heavy visual banners and complex custom layouts (like `BigPictureStyleInformation`) that were prone to crashes on low-resource devices or older Android versions.
+   - Retained the high-priority daily scheduling:
+     - **Morning (09:00 AM)**: Daily goals & budgeting start check-in.
+     - **Evening (05:00 PM)**: Reviewing mid-day spending.
+     - **Night (09:00 PM)**: Final daily expense confirmation.
 
-### Testing the Setup:
-1. Open **Settings** in the app.
-2. Tap **"Send Test Notification"**.
-3. Expand the notification on your lock screen to see the image and buttons.
-
-### Troubleshooting (If not received):
-If notifications stop appearing, check these system settings on your Android device:
-1. **App Info > Notifications**: Must be "Allowed".
-2. **App Info > Battery Saver**: Set to **"No Restrictions"**.
-3. **Special App Access > Alarms & Reminders**: Ensure the app is "Allowed".
+4. **Zero Startup Redundancy**:
+   - Optimized the Riverpod `NotificationNotifier` to prevent double-scheduling race conditions at application startup.
 
 ---
 
-## 📁 Key Files
-- `lib/services/notification_service.dart`: Main logic for scheduling and actions.
-- `android/app/src/main/res/drawable/reminder_banner.jpg`: High-res image for notifications.
-- `lib/screens/settings_screen.dart`: UI for managing reminder times and testing.
+## 📋 Key Files in the Notification System
 
----
-*NexSpend - Smart Expense Tracking*
+- [notification_service.dart](file:///d:/projects/mobile%20application/lib/services/notification_service.dart): Core engine for initializing the plugin, requesting system permissions (Android & iOS), and scheduling standard daily reminders.
+- [notification_provider.dart](file:///d:/projects/mobile%20application/lib/providers/notification_provider.dart): Riverpod state notifier managing settings state and saving user preferences to local storage.
+- [settings_screen.dart](file:///d:/projects/mobile%20application/lib/screens/settings_screen.dart): UI for enabling/disabling notifications, customizing the reminder times, and firing immediate test notifications.
+- [splash_screen.dart](file:///d:/projects/mobile%20application/lib/screens/splash_screen.dart): Handles permissions and schedules first-time launch reminders seamlessly.

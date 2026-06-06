@@ -61,7 +61,6 @@ class NotificationNotifier extends StateNotifier<NotificationSettings> {
         minute: prefs.getInt(_kNightM) ?? 0,
       ),
     );
-    await _apply();
   }
 
   Future<void> _save() async {

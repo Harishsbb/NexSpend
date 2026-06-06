@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/expense_provider.dart';
 import '../providers/account_provider.dart';
 import '../widgets/transaction_tile.dart';
+import '../widgets/perspective_scroll_item.dart';
 import 'add_expense_screen.dart';
 
 
@@ -30,16 +31,18 @@ class AllTransactionsScreen extends ConsumerWidget {
                   (acc) => acc.id == e.accountId,
                   orElse: () => accounts[0],
                 );
-                return TransactionTile(
-                  expense: e, 
-                  accountName: account.name,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AddExpenseScreen(initialExpense: e),
+                return PerspectiveScrollItem(
+                  child: TransactionTile(
+                    expense: e, 
+                    accountName: account.name,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AddExpenseScreen(initialExpense: e),
+                      ),
                     ),
+                    onDelete: () => ref.read(expenseProvider.notifier).deleteExpense(e),
                   ),
-                  onDelete: () => ref.read(expenseProvider.notifier).deleteExpense(e),
                 );
               },
             ),

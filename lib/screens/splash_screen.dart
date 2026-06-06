@@ -30,6 +30,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   Future<void> _initNotifications() async {
     await NotificationService.requestPermissions();
+    // Re-schedule after permissions are granted (startup scheduling runs before permissions exist)
+    await NotificationService.scheduleFromPrefs();
     final prefs = await SharedPreferences.getInstance();
     final hasShownWelcome = prefs.getBool('has_shown_welcome_notif') ?? false;
     if (!hasShownWelcome && !kIsWeb) {

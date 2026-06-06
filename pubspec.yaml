@@ -55,6 +55,7 @@ dependencies:
   timezone: ^0.9.4
   flutter_timezone: ^5.0.2
   shared_preferences: ^2.3.3
+  http: ^1.2.1
 
 dev_dependencies:
   flutter_test:
@@ -79,6 +80,15 @@ flutter:
   assets:
     - assets/reminder_banner.jpg
     - assets/app_icon.png
+    - assets/dashboard_bg.png
+    - assets/category_food.png
+    - assets/category_travel.png
+    - assets/category_shopping.png
+    - assets/category_bills.png
+    - assets/category_default.png
+    - assets/header_bg.png
+    - assets/empty_transactions.png
+    - assets/empty_accounts.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

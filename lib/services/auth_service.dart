@@ -1,11 +1,13 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
+
+  final String _baseUrl = 'https://finance-flow-server-jjob.onrender.com/api';
 
   Stream<User?> get authStateChanges => _auth.userChanges();
 
@@ -17,40 +19,33 @@ class AuthService {
     final extension = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : 'jpg';
     final mimeType = extension == 'png' ? 'image/png' : 'image/jpeg';
     
-    // Construct a clean, timestamped filename inside the user's subfolder
-    final cleanFileName = 'profile_${DateTime.now().millisecondsSinceEpoch}.$extension';
-    final ref = _storage.ref().child('user_photos').child(user.uid).child(cleanFileName);
-
-    debugPrint('Firebase Storage: Attempting upload to bucket: ${_storage.app.options.storageBucket}');
-    debugPrint('Firebase Storage: Full path: ${ref.fullPath}');
+    debugPrint('Express Server: Attempting photo upload to MongoDB...');
     
     try {
-      // Upload with content type metadata and a 15-second timeout to prevent silent hangs on CORS/network errors
-      final snapshot = await ref.putData(
-        bytes,
-        SettableMetadata(contentType: mimeType),
+      final token = await user.getIdToken();
+      final response = await http.post(
+        Uri.parse('$_baseUrl/users/profile-photo'),
+        headers: {
+          'Content-Type': mimeType,
+          if (token != null) 'Authorization': 'Bearer $token',
+          'x-user-id': user.uid, // Bypass header for local dev
+        },
+        body: bytes,
       ).timeout(const Duration(seconds: 15));
 
-      if (snapshot.state != TaskState.success) {
-        throw FirebaseException(
-          plugin: 'firebase_storage',
-          code: 'upload-failed',
-          message: 'Upload did not complete successfully (state: ${snapshot.state})',
-        );
+      if (response.statusCode != 200) {
+        throw Exception('Server rejected upload (Status ${response.statusCode}): ${response.body}');
       }
 
-      // Use the original ref (not snapshot.ref) to get download URL
-      final url = await ref.getDownloadURL();
-      debugPrint('Firebase Storage: Upload successful! Download URL: $url');
+      final responseData = json.decode(response.body);
+      final photoUrl = responseData['photoUrl'] as String;
       
-      await user.updatePhotoURL(url);
+      debugPrint('Express Server: Upload successful! Photo URL: $photoUrl');
+      
+      await user.updatePhotoURL(photoUrl);
       await user.reload();
-    } on FirebaseException catch (e, stack) {
-      debugPrint('Firebase Storage ERROR: [${e.code}] ${e.message}');
-      debugPrint('Firebase Storage StackTrace: $stack');
-      rethrow;
     } catch (e, stack) {
-      debugPrint('General ERROR during photo upload: $e');
+      debugPrint('Express/MongoDB upload ERROR: $e');
       debugPrint('StackTrace: $stack');
       rethrow;
     }

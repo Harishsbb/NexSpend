@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -17,20 +18,26 @@ class NotificationService {
   static const actionAdd = 'ACTION_ADD_EXPENSE';
   static const actionDismiss = 'ACTION_DISMISS';
 
+  static bool get _isSupported => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+
   static Future<void> initialize() async {
-    if (_initialized || kIsWeb) return;
+    if (_initialized || !_isSupported) return;
     debugPrint('NotificationService: Initializing NotificationService...');
 
     tz.initializeTimeZones();
     try {
       debugPrint('NotificationService: Fetching local timezone...');
       final dynamic tzInfo = await FlutterTimezone.getLocalTimezone()
-          .timeout(const Duration(seconds: 2));
+          .timeout(const Duration(seconds: 3));
       String id;
       if (tzInfo is String) {
         id = tzInfo;
       } else {
-        id = tzInfo.identifier.toString();
+        try {
+          id = (tzInfo as dynamic).identifier.toString();
+        } catch (_) {
+          id = tzInfo.toString();
+        }
       }
       tz.setLocalLocation(tz.getLocation(id));
       debugPrint('NotificationService: Local timezone set to $id');
@@ -39,16 +46,26 @@ class NotificationService {
       tz.setLocalLocation(tz.UTC);
     }
 
-    const android = AndroidInitializationSettings('ic_notification');
+    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const ios = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
+    
+    const initSettings = InitializationSettings(
+      android: android,
+      iOS: ios,
+    );
+
     try {
       debugPrint('NotificationService: Initializing local notifications plugin...');
       await _plugin.initialize(
-        const InitializationSettings(android: android),
-        onDidReceiveNotificationResponse: (details) {
+        initSettings,
+        onDidReceiveNotificationResponse: (NotificationResponse details) {
           debugPrint('NotificationService: onDidReceiveNotificationResponse: ${details.payload} / ${details.actionId}');
           if (details.payload == actionAdd || details.actionId == actionAdd) {
-            // Handle navigation or action here
-            // This will be connected to the app UI
+            // Handle notification tap / action
           }
         },
       );
@@ -62,7 +79,7 @@ class NotificationService {
   }
 
   static Future<void> requestPermissions() async {
-    if (kIsWeb) return;
+    if (!_isSupported) return;
     debugPrint('NotificationService: requestPermissions called');
     if (!_initialized) {
       debugPrint('NotificationService: requestPermissions called before initialization, initializing first...');
@@ -74,9 +91,15 @@ class NotificationService {
       debugPrint('NotificationService: requesting POST_NOTIFICATIONS permission...');
       final granted = await androidImpl?.requestNotificationsPermission();
       debugPrint('NotificationService: POST_NOTIFICATIONS permission granted: $granted');
-      debugPrint('NotificationService: requesting EXACT_ALARMS permission...');
-      final exactGranted = await androidImpl?.requestExactAlarmsPermission();
-      debugPrint('NotificationService: EXACT_ALARMS permission granted: $exactGranted');
+      final iosImpl = _plugin.resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin>();
+      debugPrint('NotificationService: requesting iOS permission...');
+      final iosGranted = await iosImpl?.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      debugPrint('NotificationService: iOS permission granted: $iosGranted');
     } catch (e, s) {
       debugPrint('NotificationService: ERROR requesting permissions: $e\n$s');
     }
@@ -84,7 +107,7 @@ class NotificationService {
 
   /// Re-reads saved prefs and reschedules notifications. Call at every app startup.
   static Future<void> scheduleFromPrefs() async {
-    if (kIsWeb) return;
+    if (!_isSupported) return;
     final prefs = await SharedPreferences.getInstance();
     await scheduleDailyNotifications(
       enabled: prefs.getBool('notif_enabled') ?? true,
@@ -109,7 +132,7 @@ class NotificationService {
     required TimeOfDay eveningTime,
     required TimeOfDay nightTime,
   }) async {
-    if (kIsWeb) return;
+    if (!_isSupported) return;
     debugPrint('NotificationService: scheduleDailyNotifications: enabled=$enabled, morning=$morningTime, evening=$eveningTime, night=$nightTime');
     try {
       await _plugin.cancelAll();
@@ -123,24 +146,18 @@ class NotificationService {
         title: 'Good Morning ☀️',
         body: "Track today's expenses & crush your budget!",
         time: morningTime,
-        contentTitle: '<b>Fresh Start!</b>',
-        summaryText: 'Set your daily budget goal and stay on track.',
       );
       await _scheduleDailyAt(
         id: 1002,
         title: 'Evening Reminder 💰',
         body: 'Logging your afternoon coffee or lunch now saves time later!',
         time: eveningTime,
-        contentTitle: '<b>Mid-day Check-in</b>',
-        summaryText: 'Keep your spending history accurate and complete.',
       );
       await _scheduleDailyAt(
         id: 1003,
         title: 'Daily Expense Check 🌙',
         body: 'One last check! Did you log all expenses today?',
         time: nightTime,
-        contentTitle: '<b>Day Complete!</b>',
-        summaryText: 'Sweet dreams! Your financial tracker is fully updated.',
       );
       debugPrint('NotificationService: scheduleDailyNotifications completed successfully');
     } catch (e, stack) {
@@ -153,21 +170,19 @@ class NotificationService {
     required String title,
     required String body,
     required TimeOfDay time,
-    required String contentTitle,
-    required String summaryText,
   }) async {
-    final now = tz.TZDateTime.now(tz.local);
-    var scheduled = tz.TZDateTime(
-      tz.local,
-      now.year,
-      now.month,
-      now.day,
+    final localNow = DateTime.now();
+    var scheduledLocal = DateTime(
+      localNow.year,
+      localNow.month,
+      localNow.day,
       time.hour,
       time.minute,
     );
-    if (scheduled.isBefore(now)) {
-      scheduled = scheduled.add(const Duration(days: 1));
+    if (scheduledLocal.isBefore(localNow)) {
+      scheduledLocal = scheduledLocal.add(const Duration(days: 1));
     }
+    final scheduled = tz.TZDateTime.from(scheduledLocal, tz.local);
     debugPrint('NotificationService: Scheduling daily at: $scheduled (id=$id)');
 
     try {
@@ -176,7 +191,7 @@ class NotificationService {
         title,
         body,
         scheduled,
-        NotificationDetails(
+        const NotificationDetails(
           android: AndroidNotificationDetails(
             _channelId,
             _channelName,
@@ -185,27 +200,11 @@ class NotificationService {
             priority: Priority.high,
             enableVibration: true,
             playSound: true,
-            color: const Color(0xFF6366F1), // Indigo brand color tint
-            styleInformation: BigPictureStyleInformation(
-              const DrawableResourceAndroidBitmap('reminder_banner'),
-              largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
-              contentTitle: contentTitle,
-              summaryText: summaryText,
-              htmlFormatContentTitle: true,
-              htmlFormatSummaryText: true,
-            ),
-            actions: [
-              const AndroidNotificationAction(
-                actionAdd,
-                'Add Expense ➕',
-                showsUserInterface: true,
-              ),
-              const AndroidNotificationAction(
-                actionDismiss,
-                'Later ⏰',
-                cancelNotification: true,
-              ),
-            ],
+          ),
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
           ),
         ),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -222,8 +221,8 @@ class NotificationService {
   }
 
   static Future<void> showTestNotification() async {
-    if (kIsWeb || !_initialized) {
-      debugPrint('NotificationService: Cannot show test notification (kIsWeb=$kIsWeb, _initialized=$_initialized)');
+    if (!_isSupported || !_initialized) {
+      debugPrint('NotificationService: Cannot show test notification (supported=$_isSupported, initialized=$_initialized)');
       return;
     }
     debugPrint('NotificationService: Showing test notification');
@@ -232,35 +231,19 @@ class NotificationService {
       await _plugin.show(
         0,
         'Test Reminder 💰',
-        'This is how your rich notifications will look!',
-        NotificationDetails(
+        'This is how your notifications will look!',
+        const NotificationDetails(
           android: AndroidNotificationDetails(
             _channelId,
             _channelName,
             channelDescription: _channelDesc,
             importance: Importance.max,
             priority: Priority.max,
-            color: const Color(0xFF6366F1), // Indigo brand color tint
-            styleInformation: const BigPictureStyleInformation(
-              DrawableResourceAndroidBitmap('reminder_banner'),
-              largeIcon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
-              contentTitle: '<b>Stunning Rich View!</b>',
-              summaryText: 'Vibrant banners, crisp stencil icons, and smart actions are active.',
-              htmlFormatContentTitle: true,
-              htmlFormatSummaryText: true,
-            ),
-            actions: [
-              const AndroidNotificationAction(
-                actionAdd,
-                'Add Expense ➕',
-                showsUserInterface: true,
-              ),
-              const AndroidNotificationAction(
-                actionDismiss,
-                'Later ⏰',
-                cancelNotification: true,
-              ),
-            ],
+          ),
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
           ),
         ),
         payload: actionAdd,
@@ -272,6 +255,6 @@ class NotificationService {
   }
 
   static Future<void> cancelAll() async {
-    if (!kIsWeb) await _plugin.cancelAll();
+    if (_isSupported) await _plugin.cancelAll();
   }
 }

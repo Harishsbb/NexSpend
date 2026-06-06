@@ -75,6 +75,7 @@ class BudgetNotifier extends StateNotifier<List<Budget>> {
   Future<void> updateLimit(String category, double limit, bool isIncome) async {
     final budget = state.firstWhere((b) => b.category == category && b.isIncome == isIncome).copyWith(limit: limit);
     await ref.read(databaseServiceProvider).setBudget(budget);
+    ref.invalidate(budgetStreamProvider);
   }
 }
 

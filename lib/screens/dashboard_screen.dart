@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import '../models/bank_account.dart';
 import '../providers/account_provider.dart';
 import '../providers/expense_provider.dart';
 import '../providers/budget_provider.dart';
-import '../widgets/account_card.dart';
+import '../widgets/account_carousel.dart';
 import '../widgets/transaction_tile.dart';
+import '../widgets/perspective_scroll_item.dart';
 import '../theme/app_colors.dart';
 import 'package:intl/intl.dart';
 import 'add_expense_screen.dart';
@@ -37,9 +39,15 @@ class DashboardScreen extends ConsumerWidget {
 
     return userAsync.when(
       data: (user) => Scaffold(
-        backgroundColor: AppColors.backgroundLight,
-        body: CustomScrollView(
-          slivers: [
+        body: Container(
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/dashboard_bg.png'),
+              fit: BoxFit.cover,
+            ),
+          ),
+          child: CustomScrollView(
+            slivers: [
             SliverAppBar(
               expandedHeight: 220,
               floating: false,
@@ -48,10 +56,9 @@ class DashboardScreen extends ConsumerWidget {
               flexibleSpace: FlexibleSpaceBar(
                 background: Container(
                   decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [AppColors.primary, AppColors.secondary],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                    image: DecorationImage(
+                      image: AssetImage('assets/header_bg.png'),
+                      fit: BoxFit.cover,
                     ),
                   ),
                   child: Column(
@@ -95,13 +102,7 @@ class DashboardScreen extends ConsumerWidget {
                     MaterialPageRoute(builder: (context) => const SettingsScreen()),
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.person_outline, color: Colors.white),
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                  ),
-                ),
+                _buildAvatarButton(context, user),
               ],
             ),
             SliverToBoxAdapter(
@@ -122,46 +123,30 @@ class DashboardScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 1.3,
-                      ),
-                      itemCount: accounts.length,
-                      itemBuilder: (context, index) {
-                        final account = accounts[index];
-                        return AccountCard(
-                          account: account,
-                          index: index,
-                          onTap: () {},
-                        onDelete: () {
-                          showAdaptiveDialog(
-                            context: context,
-                            builder: (context) => AlertDialog.adaptive(
-                              title: const Text('Delete Account'),
-                              content: Text('Are you sure you want to delete "${account.name}"?'),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text('Cancel'),
-                                ),
-                                TextButton(
-                                  onPressed: () {
-                                    HapticFeedback.mediumImpact();
-                                    ref.read(accountProvider.notifier).deleteAccount(account.id);
-                                    Navigator.pop(context);
-                                  },
-                                  style: TextButton.styleFrom(foregroundColor: Colors.red),
-                                  child: const Text('Delete'),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+                    AccountCarousel(
+                      accounts: accounts,
+                      onDelete: (account) {
+                        showAdaptiveDialog(
+                          context: context,
+                          builder: (context) => AlertDialog.adaptive(
+                            title: const Text('Delete Account'),
+                            content: Text('Are you sure you want to delete "${account.name}"?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  HapticFeedback.mediumImpact();
+                                  ref.read(accountProvider.notifier).deleteAccount(account.id);
+                                  Navigator.pop(context);
+                                },
+                                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
                         );
                       },
                     ),
@@ -182,16 +167,18 @@ class DashboardScreen extends ConsumerWidget {
                           (acc) => acc.id == e.accountId,
                           orElse: () => accounts.isNotEmpty ? accounts[0] : BankAccount(name: 'Unknown', balance: 0, type: AccountType.wallet),
                         );
-                        return TransactionTile(
-                          expense: e, 
-                          accountName: account.name,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AddExpenseScreen(initialExpense: e),
+                        return PerspectiveScrollItem(
+                          child: TransactionTile(
+                            expense: e, 
+                            accountName: account.name,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AddExpenseScreen(initialExpense: e),
+                              ),
                             ),
+                            onDelete: () => ref.read(expenseProvider.notifier).deleteExpense(e),
                           ),
-                          onDelete: () => ref.read(expenseProvider.notifier).deleteExpense(e),
                         );
                       }),
                     const SizedBox(height: 32),
@@ -203,7 +190,7 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                   ),
                     const SizedBox(height: 16),
-                    ...expenseBudgets.take(3).map((b) => _buildBudgetCard(context, b, ref)),
+                    ...expenseBudgets.take(3).map((b) => PerspectiveScrollItem(child: _buildBudgetCard(context, b, ref))),
                     const SizedBox(height: 24),
                     _buildSectionHeader(
                     'Income Targets', 
@@ -213,7 +200,7 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                   ),
                     const SizedBox(height: 16),
-                    ...incomeBudgets.take(3).map((b) => _buildBudgetCard(context, b, ref)),
+                    ...incomeBudgets.take(3).map((b) => PerspectiveScrollItem(child: _buildBudgetCard(context, b, ref))),
                     const SizedBox(height: 100), // Space for FAB
                   ],
                 ),
@@ -221,7 +208,8 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ],
         ),
-        floatingActionButton: FloatingActionButton.extended(
+      ),
+      floatingActionButton: FloatingActionButton.extended(
           onPressed: () {
             HapticFeedback.lightImpact();
             Navigator.push(
@@ -272,12 +260,29 @@ class DashboardScreen extends ConsumerWidget {
   Widget _buildEmptyState() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 40),
+        padding: const EdgeInsets.symmetric(vertical: 24),
         child: Column(
           children: [
-            Icon(Icons.receipt_outlined, size: 64, color: Colors.grey.withValues(alpha: 0.5)),
+            Image.asset(
+              'assets/empty_transactions.png',
+              width: 80,
+              height: 80,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) => Icon(
+                Icons.receipt_outlined,
+                size: 64,
+                color: Colors.grey.withValues(alpha: 0.5),
+              ),
+            ),
             const SizedBox(height: 16),
-            const Text('No transactions yet', style: TextStyle(color: Colors.grey)),
+            const Text(
+              'No transactions yet',
+              style: TextStyle(
+                color: Colors.grey,
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+              ),
+            ),
           ],
         ),
       ),
@@ -390,6 +395,57 @@ class DashboardScreen extends ConsumerWidget {
             child: const Text('Save'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAvatarButton(BuildContext context, User? user) {
+    final displayName = user?.displayName;
+    final initials = (displayName != null && displayName.isNotEmpty)
+        ? displayName[0].toUpperCase()
+        : 'U';
+
+    return IconButton(
+      onPressed: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ProfileScreen()),
+      ),
+      icon: Container(
+        width: 30,
+        height: 30,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: user?.photoURL != null
+              ? Image.network(
+                  user!.photoURL!,
+                  width: 30,
+                  height: 30,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return _buildInitialsPlaceholder(initials);
+                  },
+                )
+              : _buildInitialsPlaceholder(initials),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInitialsPlaceholder(String initials) {
+    return Container(
+      color: Colors.white.withValues(alpha: 0.25),
+      alignment: Alignment.center,
+      child: Text(
+        initials,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 13,
+        ),
       ),
     );
   }

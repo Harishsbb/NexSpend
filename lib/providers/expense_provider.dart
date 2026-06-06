@@ -25,10 +25,14 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
 
   Future<void> addExpense(Expense expense) async {
     await ref.read(databaseServiceProvider).addExpense(expense);
+    ref.invalidate(expenseStreamProvider);
+    ref.invalidate(accountStreamProvider);
   }
 
   Future<void> deleteExpense(Expense expense) async {
     await ref.read(databaseServiceProvider).deleteExpense(expense);
+    ref.invalidate(expenseStreamProvider);
+    ref.invalidate(accountStreamProvider);
   }
 }
 

@@ -28,10 +28,12 @@ class AccountNotifier extends StateNotifier<List<BankAccount>> {
 
   Future<void> addAccount(BankAccount account) async {
     await ref.read(databaseServiceProvider).addAccount(account);
+    ref.invalidate(accountStreamProvider);
   }
 
   Future<void> deleteAccount(String accountId) async {
     await ref.read(databaseServiceProvider).deleteAccount(accountId);
+    ref.invalidate(accountStreamProvider);
   }
 
   double get totalBalance => state.fold(0, (sum, item) => sum + item.balance);

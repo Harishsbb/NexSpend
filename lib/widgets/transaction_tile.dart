@@ -60,15 +60,26 @@ class TransactionTile extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(4),
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color: _getCategoryColor(expense.category).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              _getCategoryIcon(expense.category),
-              color: _getCategoryColor(expense.category),
-              size: 24,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                _getCategoryImagePath(expense.category),
+                width: 36,
+                height: 36,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => Icon(
+                  _getCategoryIcon(expense.category),
+                  color: _getCategoryColor(expense.category),
+                  size: 24,
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 16),
@@ -136,6 +147,16 @@ class TransactionTile extends StatelessWidget {
       case 'shopping': return Colors.pink;
       case 'bills': return Colors.purple;
       default: return Colors.grey;
+    }
+  }
+
+  String _getCategoryImagePath(String category) {
+    switch (category.toLowerCase()) {
+      case 'food': return 'assets/category_food.png';
+      case 'travel': return 'assets/category_travel.png';
+      case 'shopping': return 'assets/category_shopping.png';
+      case 'bills': return 'assets/category_bills.png';
+      default: return 'assets/category_default.png';
     }
   }
 }

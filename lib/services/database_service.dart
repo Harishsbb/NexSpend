@@ -1,156 +1,165 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import '../models/bank_account.dart';
 import '../models/expense.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-
 import '../models/budget.dart';
 
 class DatabaseService {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final String _baseUrl = 'https://finance-flow-server-jjob.onrender.com/api';
+
   String? get _uid => FirebaseAuth.instance.currentUser?.uid;
+  Future<String?> get _token async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return null;
+    return user.getIdToken();
+  }
+
+  Future<Map<String, String>> _getHeaders() async {
+    final token = await _token;
+    final uid = _uid;
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+    };
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    if (uid != null) {
+      headers['x-user-id'] = uid;
+    }
+    return headers;
+  }
 
   // --- Budgets ---
 
   Stream<List<Budget>> getBudgets() {
-    final uid = _uid;
-    if (uid == null) return Stream.value([]);
-    return _db
-        .collection('users')
-        .doc(uid)
-        .collection('budgets')
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => Budget.fromMap(doc.data(), doc.id))
-            .toList());
+    return Stream.fromFuture(_fetchBudgets());
+  }
+
+  Future<List<Budget>> _fetchBudgets() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(Uri.parse('$_baseUrl/budgets'), headers: headers);
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((json) => Budget.fromMap(json, '')).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error fetching budgets: $e');
+      return [];
+    }
   }
 
   Future<void> setBudget(Budget budget) async {
-    final uid = _uid;
-    if (uid == null) return;
-    final query = await _db
-        .collection('users')
-        .doc(uid)
-        .collection('budgets')
-        .where('category', isEqualTo: budget.category)
-        .where('isIncome', isEqualTo: budget.isIncome)
-        .get();
-
-    if (query.docs.isNotEmpty) {
-      await query.docs.first.reference.update(budget.toMap());
-    } else {
-      await _db
-          .collection('users')
-          .doc(uid)
-          .collection('budgets')
-          .add(budget.toMap());
+    try {
+      final headers = await _getHeaders();
+      await http.post(
+        Uri.parse('$_baseUrl/budgets'),
+        headers: headers,
+        body: json.encode(budget.toMap()),
+      );
+    } catch (e) {
+      debugPrint('Error setting budget: $e');
     }
   }
 
   // --- Bank Accounts ---
 
   Stream<List<BankAccount>> getAccounts() {
-    final uid = _uid;
-    if (uid == null) return Stream.value([]);
-    return _db
-        .collection('users')
-        .doc(uid)
-        .collection('accounts')
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => BankAccount.fromMap({...doc.data(), 'id': doc.id}))
-            .toList());
+    return Stream.fromFuture(_fetchAccounts());
+  }
+
+  Future<List<BankAccount>> _fetchAccounts() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(Uri.parse('$_baseUrl/accounts'), headers: headers);
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((json) => BankAccount.fromMap(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error fetching accounts: $e');
+      return [];
+    }
   }
 
   Future<void> addAccount(BankAccount account) async {
-    final uid = _uid;
-    if (uid == null) return;
-    await _db
-        .collection('users')
-        .doc(uid)
-        .collection('accounts')
-        .doc(account.id)
-        .set(account.toMap());
+    try {
+      final headers = await _getHeaders();
+      await http.post(
+        Uri.parse('$_baseUrl/accounts'),
+        headers: headers,
+        body: json.encode(account.toMap()),
+      );
+    } catch (e) {
+      debugPrint('Error adding account: $e');
+    }
   }
 
   Future<void> deleteAccount(String accountId) async {
-    final uid = _uid;
-    if (uid == null) return;
-    await _db
-        .collection('users')
-        .doc(uid)
-        .collection('accounts')
-        .doc(accountId)
-        .delete();
+    try {
+      final headers = await _getHeaders();
+      await http.delete(
+        Uri.parse('$_baseUrl/accounts/$accountId'),
+        headers: headers,
+      );
+    } catch (e) {
+      debugPrint('Error deleting account: $e');
+    }
   }
 
   Future<void> updateAccount(BankAccount account) async {
-    final uid = _uid;
-    if (uid == null) return;
-    await _db
-        .collection('users')
-        .doc(uid)
-        .collection('accounts')
-        .doc(account.id)
-        .update(account.toMap());
+    // In our backend, saving an account uses findOneAndUpdate (upsert), so we can just call addAccount
+    await addAccount(account);
   }
 
   // --- Expenses ---
 
   Stream<List<Expense>> getExpenses() {
-    final uid = _uid;
-    if (uid == null) return Stream.value([]);
-    return _db
-        .collection('users')
-        .doc(uid)
-        .collection('expenses')
-        .orderBy('dateTime', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => Expense.fromMap({...doc.data(), 'id': doc.id}))
-            .toList());
+    return Stream.fromFuture(_fetchExpenses());
+  }
+
+  Future<List<Expense>> _fetchExpenses() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(Uri.parse('$_baseUrl/expenses'), headers: headers);
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((json) => Expense.fromMap(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error fetching expenses: $e');
+      return [];
+    }
   }
 
   Future<void> addExpense(Expense expense) async {
-    final uid = _uid;
-    if (uid == null) return;
-    await _db
-        .collection('users')
-        .doc(uid)
-        .collection('expenses')
-        .doc(expense.id)
-        .set(expense.toMap());
+    try {
+      final headers = await _getHeaders();
+      await http.post(
+        Uri.parse('$_baseUrl/expenses'),
+        headers: headers,
+        body: json.encode(expense.toMap()),
+      );
+    } catch (e) {
+      debugPrint('Error adding expense: $e');
+    }
   }
 
   Future<void> deleteExpense(Expense expense) async {
-    final uid = _uid;
-    if (uid == null) return;
-    
-    // Delete the transaction
-    await _db
-        .collection('users')
-        .doc(uid)
-        .collection('expenses')
-        .doc(expense.id)
-        .delete();
-
-    // REVERT the balance on the account
-    final accountRef = _db
-        .collection('users')
-        .doc(uid)
-        .collection('accounts')
-        .doc(expense.accountId);
-
-    await _db.runTransaction((transaction) async {
-      final accountSnapshot = await transaction.get(accountRef);
-      if (accountSnapshot.exists) {
-        final currentBalance = (accountSnapshot.data()?['balance'] ?? 0.0).toDouble();
-        // If it was income, subtract it back. If it was expense, add it back.
-        final revertedBalance = expense.isIncome 
-            ? currentBalance - expense.amount 
-            : currentBalance + expense.amount;
-        
-        transaction.update(accountRef, {'balance': revertedBalance});
-      }
-    });
+    try {
+      final headers = await _getHeaders();
+      await http.delete(
+        Uri.parse('$_baseUrl/expenses/${expense.id}'),
+        headers: headers,
+      );
+    } catch (e) {
+      debugPrint('Error deleting expense: $e');
+    }
   }
 }
+

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/budget_provider.dart';
 import '../theme/app_colors.dart';
+import '../widgets/perspective_scroll_item.dart';
 import 'package:intl/intl.dart';
 
 class AllBudgetsScreen extends ConsumerWidget {
@@ -54,16 +55,17 @@ class AllBudgetsScreen extends ConsumerWidget {
                   : AppColors.success;
         }
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 20),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
-            ],
-          ),
+        return PerspectiveScrollItem(
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 20),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
+              ],
+            ),
           child: Column(
             children: [
               Row(
@@ -102,7 +104,7 @@ class AllBudgetsScreen extends ConsumerWidget {
               ),
             ],
           ),
-        );
+        ),);
       },
     );
   }

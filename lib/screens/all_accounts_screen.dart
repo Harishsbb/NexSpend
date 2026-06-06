@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/account_provider.dart';
 import '../widgets/account_card.dart';
+import '../widgets/perspective_scroll_item.dart';
 import 'add_account_screen.dart';
 
 class AllAccountsScreen extends ConsumerWidget {
@@ -37,33 +38,35 @@ class AllAccountsScreen extends ConsumerWidget {
               itemCount: accounts.length,
               itemBuilder: (context, index) {
                 final account = accounts[index];
-                return AccountCard(
-                  account: account,
-                  index: index,
-                  onTap: () {},
-                  onDelete: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Delete Account'),
-                        content: Text('Are you sure you want to delete "${account.name}"?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Cancel'),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              ref.read(accountProvider.notifier).deleteAccount(account.id);
-                              Navigator.pop(context);
-                            },
-                            style: TextButton.styleFrom(foregroundColor: Colors.red),
-                            child: const Text('Delete'),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                return PerspectiveScrollItem(
+                  child: AccountCard(
+                    account: account,
+                    index: index,
+                    onTap: () {},
+                    onDelete: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Delete Account'),
+                          content: Text('Are you sure you want to delete "${account.name}"?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                ref.read(accountProvider.notifier).deleteAccount(account.id);
+                                Navigator.pop(context);
+                              },
+                              style: TextButton.styleFrom(foregroundColor: Colors.red),
+                              child: const Text('Delete'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                 );
               },
             ),
