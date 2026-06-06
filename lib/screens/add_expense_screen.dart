@@ -25,7 +25,10 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   DateTime _selectedDate = DateTime.now();
   bool _isIncome = false;
 
-  final List<String> _categories = ['Food', 'Travel', 'Shopping', 'Bills', 'Health', 'Entertainment', 'Other'];
+  final List<String> _expenseCategories = ['Food', 'Travel', 'Shopping', 'Bills', 'Health', 'Entertainment', 'Other'];
+  final List<String> _incomeCategories = ['Salary', 'Freelance', 'Investments', 'Other'];
+
+  List<String> get _categories => _isIncome ? _incomeCategories : _expenseCategories;
 
   @override
   void initState() {
@@ -38,6 +41,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       _selectedAccountId = e.accountId;
       _selectedDate = e.dateTime;
       _isIncome = e.isIncome;
+    } else {
+      _selectedCategory = _isIncome ? _incomeCategories.first : _expenseCategories.first;
     }
   }
 
@@ -76,7 +81,13 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                   ],
                   selected: {_isIncome},
                   onSelectionChanged: (Set<bool> newSelection) {
-                    setState(() => _isIncome = newSelection.first);
+                    setState(() {
+                      _isIncome = newSelection.first;
+                      final newCategories = _isIncome ? _incomeCategories : _expenseCategories;
+                      if (!newCategories.contains(_selectedCategory)) {
+                        _selectedCategory = newCategories.first;
+                      }
+                    });
                   },
                   style: SegmentedButton.styleFrom(
                     selectedBackgroundColor: _isIncome ? Colors.green : Colors.red,

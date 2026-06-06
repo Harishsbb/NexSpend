@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/bank_account.dart';
 import '../models/expense.dart';
 import '../models/budget.dart';
@@ -10,6 +11,11 @@ class DatabaseService {
   final String _baseUrl = 'https://finance-flow-server-jjob.onrender.com/api';
 
   String? get _uid => FirebaseAuth.instance.currentUser?.uid;
+  
+  String get _expensesKey => 'cached_expenses_${_uid ?? 'guest'}';
+  String get _accountsKey => 'cached_accounts_${_uid ?? 'guest'}';
+  String get _budgetsKey => 'cached_budgets_${_uid ?? 'guest'}';
+
   Future<String?> get _token async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return null;
@@ -33,27 +39,53 @@ class DatabaseService {
 
   // --- Budgets ---
 
-  Stream<List<Budget>> getBudgets() {
-    return Stream.fromFuture(_fetchBudgets());
-  }
+  Stream<List<Budget>> getBudgets() async* {
+    // 1. Emit cached budgets immediately if available
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedJson = prefs.getString(_budgetsKey);
+      if (cachedJson != null) {
+        final List<dynamic> data = json.decode(cachedJson);
+        yield data.map((json) => Budget.fromMap(json, '')).toList();
+      }
+    } catch (e) {
+      debugPrint('Error loading cached budgets: $e');
+    }
 
-  Future<List<Budget>> _fetchBudgets() async {
+    // 2. Fetch fresh budgets from network
     try {
       final headers = await _getHeaders();
       final response = await http.get(Uri.parse('$_baseUrl/budgets'), headers: headers);
       if (response.statusCode == 200) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_budgetsKey, response.body);
+
         final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => Budget.fromMap(json, '')).toList();
+        yield data.map((json) => Budget.fromMap(json, '')).toList();
       }
-      return [];
     } catch (e) {
       debugPrint('Error fetching budgets: $e');
-      return [];
     }
   }
 
   Future<void> setBudget(Budget budget) async {
     try {
+      // 1. Write to cache first
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final cachedJson = prefs.getString(_budgetsKey);
+        List<dynamic> list = [];
+        if (cachedJson != null) {
+          list = json.decode(cachedJson);
+        }
+        list.removeWhere((item) => item['category'] == budget.category && item['isIncome'] == budget.isIncome);
+        list.add(budget.toMap());
+        await prefs.setString(_budgetsKey, json.encode(list));
+      } catch (e) {
+        debugPrint('Error updating cached budgets: $e');
+      }
+
+      // 2. Send to network
       final headers = await _getHeaders();
       await http.post(
         Uri.parse('$_baseUrl/budgets'),
@@ -67,27 +99,53 @@ class DatabaseService {
 
   // --- Bank Accounts ---
 
-  Stream<List<BankAccount>> getAccounts() {
-    return Stream.fromFuture(_fetchAccounts());
-  }
+  Stream<List<BankAccount>> getAccounts() async* {
+    // 1. Emit cached accounts immediately if available
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedJson = prefs.getString(_accountsKey);
+      if (cachedJson != null) {
+        final List<dynamic> data = json.decode(cachedJson);
+        yield data.map((json) => BankAccount.fromMap(json)).toList();
+      }
+    } catch (e) {
+      debugPrint('Error loading cached accounts: $e');
+    }
 
-  Future<List<BankAccount>> _fetchAccounts() async {
+    // 2. Fetch fresh accounts from network
     try {
       final headers = await _getHeaders();
       final response = await http.get(Uri.parse('$_baseUrl/accounts'), headers: headers);
       if (response.statusCode == 200) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_accountsKey, response.body);
+
         final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => BankAccount.fromMap(json)).toList();
+        yield data.map((json) => BankAccount.fromMap(json)).toList();
       }
-      return [];
     } catch (e) {
       debugPrint('Error fetching accounts: $e');
-      return [];
     }
   }
 
   Future<void> addAccount(BankAccount account) async {
     try {
+      // 1. Write to cache first
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final cachedJson = prefs.getString(_accountsKey);
+        List<dynamic> list = [];
+        if (cachedJson != null) {
+          list = json.decode(cachedJson);
+        }
+        list.removeWhere((item) => item['id'] == account.id);
+        list.add(account.toMap());
+        await prefs.setString(_accountsKey, json.encode(list));
+      } catch (e) {
+        debugPrint('Error updating cached accounts: $e');
+      }
+
+      // 2. Send to network
       final headers = await _getHeaders();
       await http.post(
         Uri.parse('$_baseUrl/accounts'),
@@ -101,6 +159,20 @@ class DatabaseService {
 
   Future<void> deleteAccount(String accountId) async {
     try {
+      // 1. Write to cache first
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final cachedJson = prefs.getString(_accountsKey);
+        if (cachedJson != null) {
+          List<dynamic> list = json.decode(cachedJson);
+          list.removeWhere((item) => item['id'] == accountId);
+          await prefs.setString(_accountsKey, json.encode(list));
+        }
+      } catch (e) {
+        debugPrint('Error updating cached accounts: $e');
+      }
+
+      // 2. Send to network
       final headers = await _getHeaders();
       await http.delete(
         Uri.parse('$_baseUrl/accounts/$accountId'),
@@ -112,33 +184,58 @@ class DatabaseService {
   }
 
   Future<void> updateAccount(BankAccount account) async {
-    // In our backend, saving an account uses findOneAndUpdate (upsert), so we can just call addAccount
     await addAccount(account);
   }
 
   // --- Expenses ---
 
-  Stream<List<Expense>> getExpenses() {
-    return Stream.fromFuture(_fetchExpenses());
-  }
+  Stream<List<Expense>> getExpenses() async* {
+    // 1. Emit cached expenses immediately if available
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedJson = prefs.getString(_expensesKey);
+      if (cachedJson != null) {
+        final List<dynamic> data = json.decode(cachedJson);
+        yield data.map((json) => Expense.fromMap(json)).toList();
+      }
+    } catch (e) {
+      debugPrint('Error loading cached expenses: $e');
+    }
 
-  Future<List<Expense>> _fetchExpenses() async {
+    // 2. Fetch fresh expenses from network
     try {
       final headers = await _getHeaders();
       final response = await http.get(Uri.parse('$_baseUrl/expenses'), headers: headers);
       if (response.statusCode == 200) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_expensesKey, response.body);
+
         final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => Expense.fromMap(json)).toList();
+        yield data.map((json) => Expense.fromMap(json)).toList();
       }
-      return [];
     } catch (e) {
       debugPrint('Error fetching expenses: $e');
-      return [];
     }
   }
 
   Future<void> addExpense(Expense expense) async {
     try {
+      // 1. Write to cache first
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final cachedJson = prefs.getString(_expensesKey);
+        List<dynamic> list = [];
+        if (cachedJson != null) {
+          list = json.decode(cachedJson);
+        }
+        list.removeWhere((item) => item['id'] == expense.id);
+        list.add(expense.toMap());
+        await prefs.setString(_expensesKey, json.encode(list));
+      } catch (e) {
+        debugPrint('Error updating cached expenses: $e');
+      }
+
+      // 2. Send to network
       final headers = await _getHeaders();
       await http.post(
         Uri.parse('$_baseUrl/expenses'),
@@ -152,6 +249,20 @@ class DatabaseService {
 
   Future<void> deleteExpense(Expense expense) async {
     try {
+      // 1. Write to cache first
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final cachedJson = prefs.getString(_expensesKey);
+        if (cachedJson != null) {
+          List<dynamic> list = json.decode(cachedJson);
+          list.removeWhere((item) => item['id'] == expense.id);
+          await prefs.setString(_expensesKey, json.encode(list));
+        }
+      } catch (e) {
+        debugPrint('Error updating cached expenses: $e');
+      }
+
+      // 2. Send to network
       final headers = await _getHeaders();
       await http.delete(
         Uri.parse('$_baseUrl/expenses/${expense.id}'),
@@ -162,4 +273,3 @@ class DatabaseService {
     }
   }
 }
-

@@ -136,6 +136,11 @@ class TransactionTile extends StatelessWidget {
       case 'travel': return Icons.directions_car;
       case 'shopping': return Icons.shopping_bag;
       case 'bills': return Icons.receipt_long;
+      case 'health': return Icons.medical_services;
+      case 'entertainment': return Icons.movie;
+      case 'salary': return Icons.monetization_on;
+      case 'freelance': return Icons.laptop_mac;
+      case 'investments': return Icons.show_chart;
       default: return Icons.category;
     }
   }
@@ -146,6 +151,11 @@ class TransactionTile extends StatelessWidget {
       case 'travel': return Colors.blue;
       case 'shopping': return Colors.pink;
       case 'bills': return Colors.purple;
+      case 'health': return Colors.redAccent;
+      case 'entertainment': return Colors.deepOrange;
+      case 'salary': return Colors.green;
+      case 'freelance': return Colors.teal;
+      case 'investments': return Colors.indigo;
       default: return Colors.grey;
     }
   }

@@ -15,7 +15,9 @@ class AnalyticsScreen extends ConsumerWidget {
     final expenses = ref.watch(expenseProvider);
     final accounts = ref.watch(accountProvider);
 
-    final categoryTotals = groupBy(expenses, (dynamic e) => e.category)
+    final spentExpenses = expenses.where((e) => !e.isIncome).toList();
+
+    final categoryTotals = groupBy(spentExpenses, (dynamic e) => e.category)
         .map((cat, exps) => MapEntry(cat, exps.fold(0.0, (sum, e) => sum + e.amount)));
 
     final insights = InsightEngine.generateInsights(expenses, accounts);
@@ -59,7 +61,7 @@ class AnalyticsScreen extends ConsumerWidget {
                 : BarChart(
                   BarChartData(
                     barGroups: accounts.asMap().entries.map((entry) {
-                      final accountExpenses = expenses.where((e) => e.accountId == entry.value.id);
+                      final accountExpenses = expenses.where((e) => e.accountId == entry.value.id && !e.isIncome);
                       final total = accountExpenses.fold(0.0, (sum, e) => sum + e.amount);
                       return BarChartGroupData(
                         x: entry.key,
@@ -134,12 +136,13 @@ class AnalyticsScreen extends ConsumerWidget {
   }
 
   Widget _buildSummaryStats(List<dynamic> expenses) {
-    final total = expenses.fold(0.0, (sum, e) => sum + e.amount);
+    final spentExpenses = expenses.where((e) => !e.isIncome).toList();
+    final total = spentExpenses.fold(0.0, (sum, e) => sum + e.amount);
     return Row(
       children: [
         _buildStatBox('Total Spent', '₹${total.toStringAsFixed(0)}', AppColors.error),
         const SizedBox(width: 16),
-        _buildStatBox('Transactions', '${expenses.length}', AppColors.info),
+        _buildStatBox('Transactions', '${spentExpenses.length}', AppColors.info),
       ],
     );
   }
@@ -170,8 +173,11 @@ class AnalyticsScreen extends ConsumerWidget {
       case 'travel': return Colors.blue;
       case 'shopping': return Colors.pink;
       case 'bills': return Colors.purple;
-      case 'health': return Colors.green;
-      case 'entertainment': return Colors.red;
+      case 'health': return Colors.redAccent;
+      case 'entertainment': return Colors.deepOrange;
+      case 'salary': return Colors.green;
+      case 'freelance': return Colors.teal;
+      case 'investments': return Colors.indigo;
       default: return Colors.grey;
     }
   }
