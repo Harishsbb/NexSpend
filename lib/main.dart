@@ -12,13 +12,27 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  // Bug fix: separate try-catch so a timeout on initialize() doesn't skip scheduling.
   try {
     await NotificationService.initialize()
         .timeout(const Duration(seconds: 5));
+  } catch (e, stack) {
+    debugPrint('NOTIFICATION ERROR during initialize: $e\n$stack');
+  }
+  // Request permissions at startup — not just when the user toggles the switch.
+  // Without this, a fresh install (notifications enabled by default) never asks for
+  // SCHEDULE_EXACT_ALARM and silently falls back to inexact alarms.
+  try {
+    await NotificationService.requestPermissions()
+        .timeout(const Duration(seconds: 5));
+  } catch (e, stack) {
+    debugPrint('NOTIFICATION ERROR during requestPermissions: $e\n$stack');
+  }
+  try {
     await NotificationService.scheduleFromPrefs()
         .timeout(const Duration(seconds: 5));
   } catch (e, stack) {
-    debugPrint('NOTIFICATION ERROR during main init: $e\n$stack');
+    debugPrint('NOTIFICATION ERROR during scheduleFromPrefs: $e\n$stack');
   }
 
   runApp(

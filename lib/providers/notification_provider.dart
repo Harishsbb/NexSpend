@@ -87,10 +87,8 @@ class NotificationNotifier extends StateNotifier<NotificationSettings> {
     state = state.copyWith(enabled: value);
     await _save();
     if (value) {
-      // Prompt for OS-level permissions when turning ON in case they were disabled/not granted yet
+      // Re-request permissions in case they were revoked since last launch.
       await NotificationService.requestPermissions();
-      // Show an immediate welcome test notification to prove it works and show off rich styling
-      await NotificationService.showTestNotification();
     }
     await _apply();
   }
