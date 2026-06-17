@@ -83,11 +83,11 @@ class AllBudgetsScreen extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '${budget.isIncome ? 'Earned' : 'Spent'}: ${NumberFormat.simpleCurrency(name: 'INR', decimalDigits: 0).format(budget.currentAmount)}',
+                    '${budget.isIncome ? 'Earned' : 'Spent'}: ${NumberFormat.simpleCurrency(name: 'INR', decimalDigits: 2).format(budget.currentAmount)}',
                     style: const TextStyle(color: Colors.grey),
                   ),
                   Text(
-                    '${budget.isIncome ? 'Target' : 'Limit'}: ${NumberFormat.simpleCurrency(name: 'INR', decimalDigits: 0).format(budget.limit)}',
+                    '${budget.isIncome ? 'Target' : 'Limit'}: ${NumberFormat.simpleCurrency(name: 'INR', decimalDigits: 2).format(budget.limit)}',
                     style: TextStyle(color: color, fontWeight: FontWeight.bold),
                   ),
                 ],
@@ -117,7 +117,7 @@ class AllBudgetsScreen extends ConsumerWidget {
         title: Text('Edit ${budget.category} ${budget.isIncome ? 'Target' : 'Budget'}'),
         content: TextField(
           controller: controller,
-          keyboardType: TextInputType.number,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
           decoration: InputDecoration(
             labelText: budget.isIncome ? 'Monthly Target' : 'Monthly Limit',
             prefixText: '₹ ',

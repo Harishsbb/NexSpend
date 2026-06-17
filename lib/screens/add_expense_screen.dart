@@ -19,6 +19,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
+  final _customCategoryController = TextEditingController();
   
   String _selectedCategory = 'Food';
   String? _selectedAccountId;
@@ -37,13 +38,28 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       final e = widget.initialExpense!;
       _amountController.text = e.amount.toString();
       _noteController.text = e.note ?? '';
-      _selectedCategory = e.category;
       _selectedAccountId = e.accountId;
       _selectedDate = e.dateTime;
       _isIncome = e.isIncome;
+
+      final currentCategories = e.isIncome ? _incomeCategories : _expenseCategories;
+      if (currentCategories.contains(e.category) && e.category != 'Other') {
+        _selectedCategory = e.category;
+      } else {
+        _selectedCategory = 'Other';
+        _customCategoryController.text = e.category;
+      }
     } else {
       _selectedCategory = _isIncome ? _incomeCategories.first : _expenseCategories.first;
     }
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    _noteController.dispose();
+    _customCategoryController.dispose();
+    super.dispose();
   }
 
   @override
@@ -100,7 +116,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               const SizedBox(height: 8),
               TextFormField(
                 controller: _amountController,
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 style: TextStyle(
                   fontSize: 40, 
                   fontWeight: FontWeight.bold,
@@ -139,6 +155,36 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                   );
                 }).toList(),
               ),
+              if (_selectedCategory == 'Other') ...[
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _customCategoryController,
+                  style: const TextStyle(fontSize: 16),
+                  decoration: InputDecoration(
+                    hintText: 'Enter custom category',
+                    filled: true,
+                    fillColor: isDark ? AppColors.cardDark : Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: isDark ? BorderSide(color: Colors.white.withValues(alpha: 0.1)) : BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: isDark ? BorderSide(color: Colors.white.withValues(alpha: 0.1)) : BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(color: _isIncome ? Colors.green : AppColors.primary, width: 2),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter a custom category name';
+                    }
+                    return null;
+                  },
+                ),
+              ],
               const SizedBox(height: 32),
               const Text('Account', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
@@ -250,10 +296,14 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         await ref.read(accountProvider.notifier).addAccount(oldAccount.copyWith(balance: revertedBalance));
       }
 
+      final categoryName = _selectedCategory == 'Other' 
+          ? _customCategoryController.text.trim() 
+          : _selectedCategory;
+
       final expense = Expense(
         id: widget.initialExpense?.id, // Keep same ID if editing
         amount: amount,
-        category: _selectedCategory,
+        category: categoryName,
         dateTime: _selectedDate,
         accountId: _selectedAccountId!,
         note: _noteController.text.isEmpty ? null : _noteController.text,
@@ -274,7 +324,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       // Check if budget is exceeded (only for expenses)
       if (!_isIncome) {
         final budgets = ref.read(budgetProvider);
-        final budgetIndex = budgets.indexWhere((b) => b.category == _selectedCategory);
+        final budgetIndex = budgets.indexWhere((b) => b.category == categoryName);
         if (budgetIndex != -1) {
           final budget = budgets[budgetIndex];
           if (budget.currentAmount + amount > budget.limit) {

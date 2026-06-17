@@ -6,11 +6,13 @@ import '../theme/app_colors.dart';
 class AccountCarousel extends StatefulWidget {
   final List<BankAccount> accounts;
   final void Function(BankAccount) onDelete;
+  final void Function(BankAccount)? onTap;
 
   const AccountCarousel({
     super.key,
     required this.accounts,
     required this.onDelete,
+    this.onTap,
   });
 
   @override
@@ -106,7 +108,7 @@ class _AccountCarouselState extends State<AccountCarousel> {
     final shadowOffset = (10 + delta.abs() * 4).clamp(10.0, 18.0);
     final colors = _gradients[index % _gradients.length];
     final account = widget.accounts[index];
-    final format = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
+    final format = NumberFormat.currency(symbol: '₹', decimalDigits: 2);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -117,7 +119,9 @@ class _AccountCarouselState extends State<AccountCarousel> {
           transform: Matrix4.identity()
             ..setEntry(3, 2, 0.001) // perspective depth
             ..rotateY(-angle),
-          child: Container(
+          child: GestureDetector(
+            onTap: widget.onTap != null ? () => widget.onTap!(account) : null,
+            child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: colors,
@@ -173,7 +177,8 @@ class _AccountCarouselState extends State<AccountCarousel> {
         ),
       ),
     ),
-  );
+  ),
+);
   }
 
   Widget _buildDots() {

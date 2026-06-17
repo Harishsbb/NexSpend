@@ -31,6 +31,11 @@ class AccountNotifier extends StateNotifier<List<BankAccount>> {
     ref.invalidate(accountStreamProvider);
   }
 
+  Future<void> updateAccount(BankAccount account) async {
+    await ref.read(databaseServiceProvider).updateAccount(account);
+    ref.invalidate(accountStreamProvider);
+  }
+
   Future<void> deleteAccount(String accountId) async {
     await ref.read(databaseServiceProvider).deleteAccount(accountId);
     ref.invalidate(accountStreamProvider);

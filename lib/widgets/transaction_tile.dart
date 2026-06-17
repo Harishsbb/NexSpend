@@ -19,7 +19,7 @@ class TransactionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormat = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
+    final currencyFormat = NumberFormat.currency(symbol: '₹', decimalDigits: 2);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(

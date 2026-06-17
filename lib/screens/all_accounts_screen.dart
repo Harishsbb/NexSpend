@@ -42,7 +42,12 @@ class AllAccountsScreen extends ConsumerWidget {
                   child: AccountCard(
                     account: account,
                     index: index,
-                    onTap: () {},
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AddAccountScreen(initialAccount: account),
+                      ),
+                    ),
                     onDelete: () {
                       showDialog(
                         context: context,

@@ -5,7 +5,8 @@ import '../providers/account_provider.dart';
 import '../theme/app_colors.dart';
 
 class AddAccountScreen extends ConsumerStatefulWidget {
-  const AddAccountScreen({super.key});
+  final BankAccount? initialAccount;
+  const AddAccountScreen({super.key, this.initialAccount});
 
   @override
   ConsumerState<AddAccountScreen> createState() => _AddAccountScreenState();
@@ -18,10 +19,20 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
   AccountType _selectedType = AccountType.savings;
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.initialAccount != null) {
+      _nameController.text = widget.initialAccount!.name;
+      _balanceController.text = widget.initialAccount!.balance.toString();
+      _selectedType = widget.initialAccount!.type;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add Bank Account'),
+        title: Text(widget.initialAccount != null ? 'Edit Bank Account' : 'Add Bank Account'),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -51,7 +62,10 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
               const SizedBox(height: 48),
               ElevatedButton(
                 onPressed: _saveAccount,
-                child: const Text('Add Account', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: Text(
+                  widget.initialAccount != null ? 'Save Changes' : 'Add Account',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
@@ -82,7 +96,7 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
         const SizedBox(height: 10),
         TextFormField(
           controller: controller,
-          keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+          keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
           style: const TextStyle(fontSize: 16),
           decoration: InputDecoration(
             hintText: hint,
@@ -116,11 +130,16 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
   void _saveAccount() {
     if (_formKey.currentState!.validate()) {
       final account = BankAccount(
+        id: widget.initialAccount?.id,
         name: _nameController.text.trim(),
         balance: double.parse(_balanceController.text),
         type: _selectedType,
       );
-      ref.read(accountProvider.notifier).addAccount(account);
+      if (widget.initialAccount != null) {
+        ref.read(accountProvider.notifier).updateAccount(account);
+      } else {
+        ref.read(accountProvider.notifier).addAccount(account);
+      }
       Navigator.pop(context);
     }
   }

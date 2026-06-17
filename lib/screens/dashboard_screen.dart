@@ -22,11 +22,19 @@ import 'all_budgets_screen.dart';
 import 'profile_screen.dart';
 import 'settings_screen.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  String _selectedType = 'All'; // 'All', 'Expense', 'Income'
+  String _selectedAccountId = 'All'; // 'All' or specific account ID
+
+  @override
+  Widget build(BuildContext context) {
     final userAsync = ref.watch(authStateProvider);
     final accounts = ref.watch(accountProvider);
     final expenses = ref.watch(expenseProvider);
@@ -35,7 +43,15 @@ class DashboardScreen extends ConsumerWidget {
     final incomeBudgets = budgets.where((b) => b.isIncome).toList();
     final totalBalance = ref.read(accountProvider.notifier).totalBalance;
     
-    final currencyFormat = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
+    final currencyFormat = NumberFormat.currency(symbol: '₹', decimalDigits: 2);
+
+    final filteredExpenses = expenses.where((e) {
+      final matchesType = _selectedType == 'All' || 
+          (_selectedType == 'Income' && e.isIncome) ||
+          (_selectedType == 'Expense' && !e.isIncome);
+      final matchesAccount = _selectedAccountId == 'All' || e.accountId == _selectedAccountId;
+      return matchesType && matchesAccount;
+    }).toList();
 
     return userAsync.when(
       data: (user) => Scaffold(
@@ -125,6 +141,12 @@ class DashboardScreen extends ConsumerWidget {
                     const SizedBox(height: 16),
                     AccountCarousel(
                       accounts: accounts,
+                      onTap: (account) => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AddAccountScreen(initialAccount: account),
+                        ),
+                      ),
                       onDelete: (account) {
                         showAdaptiveDialog(
                           context: context,
@@ -158,11 +180,13 @@ class DashboardScreen extends ConsumerWidget {
                       MaterialPageRoute(builder: (context) => const AllTransactionsScreen()),
                     ),
                   ),
+                    const SizedBox(height: 12),
+                    _buildFilterSection(accounts),
                     const SizedBox(height: 16),
-                    if (expenses.isEmpty)
-                      _buildEmptyState()
+                    if (filteredExpenses.isEmpty)
+                      _buildEmptyState(message: expenses.isEmpty ? 'No transactions yet' : 'No matching transactions found')
                     else
-                      ...expenses.take(5).map((e) {
+                      ...filteredExpenses.take(5).map((e) {
                         final account = accounts.firstWhere(
                           (acc) => acc.id == e.accountId,
                           orElse: () => accounts.isNotEmpty ? accounts[0] : BankAccount(name: 'Unknown', balance: 0, type: AccountType.wallet),
@@ -257,7 +281,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState({String message = 'No transactions yet'}) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 24),
@@ -275,9 +299,9 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'No transactions yet',
-              style: TextStyle(
+            Text(
+              message,
+              style: const TextStyle(
                 color: Colors.grey,
                 fontWeight: FontWeight.w500,
                 fontSize: 14,
@@ -286,6 +310,78 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildFilterSection(List<BankAccount> accounts) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _buildFilterChip('All', _selectedType == 'All', () {
+                setState(() => _selectedType = 'All');
+              }),
+              const SizedBox(width: 8),
+              _buildFilterChip('Income', _selectedType == 'Income', () {
+                setState(() => _selectedType = 'Income');
+              }, activeColor: Colors.green),
+              const SizedBox(width: 8),
+              _buildFilterChip('Expense', _selectedType == 'Expense', () {
+                setState(() => _selectedType = 'Expense');
+              }, activeColor: Colors.red),
+              
+              if (accounts.length > 1) ...[
+                const SizedBox(width: 16),
+                Container(
+                  width: 1,
+                  height: 24,
+                  color: isDark ? Colors.white24 : Colors.black12,
+                ),
+                const SizedBox(width: 16),
+                _buildFilterChip('All Accounts', _selectedAccountId == 'All', () {
+                  setState(() => _selectedAccountId = 'All');
+                }),
+                ...accounts.map((acc) {
+                  return Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: _buildFilterChip(acc.name, _selectedAccountId == acc.id, () {
+                      setState(() => _selectedAccountId = acc.id);
+                    }),
+                  );
+                }),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterChip(String label, bool isSelected, VoidCallback onTap, {Color? activeColor}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final themeColor = activeColor ?? AppColors.primary;
+    return ChoiceChip(
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+        ),
+      ),
+      selected: isSelected,
+      onSelected: (_) => onTap(),
+      selectedColor: themeColor,
+      backgroundColor: isDark ? AppColors.cardDark : Colors.grey.shade100,
+      side: BorderSide.none,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      showCheckmark: false,
     );
   }  Widget _buildBudgetCard(BuildContext context, dynamic budget, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -376,7 +472,7 @@ class DashboardScreen extends ConsumerWidget {
         title: Text('Edit ${budget.category} Budget'),
         content: TextField(
           controller: controller,
-          keyboardType: TextInputType.number,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
           decoration: const InputDecoration(
             labelText: 'Monthly Limit',
             prefixText: '₹ ',
