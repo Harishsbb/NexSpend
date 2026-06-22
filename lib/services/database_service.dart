@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/bank_account.dart';
 import '../models/expense.dart';
 import '../models/budget.dart';
+import '../utils/file_saver.dart';
 
 class DatabaseService {
   final String _baseUrl = 'https://finance-flow-server-jjob.onrender.com/api';
@@ -36,6 +37,7 @@ class DatabaseService {
     }
     return headers;
   }
+
 
   // --- Budgets ---
 
@@ -270,6 +272,41 @@ class DatabaseService {
       );
     } catch (e) {
       debugPrint('Error deleting expense: $e');
+    }
+  }
+
+  Future<void> exportExpensesPdf({
+    String? accountId,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      
+      // Build query parameters
+      final queryParams = <String, String>{};
+      if (accountId != null && accountId != 'All') {
+        queryParams['accountId'] = accountId;
+      }
+      if (startDate != null) {
+        queryParams['startDate'] = startDate.toIso8601String();
+      }
+      if (endDate != null) {
+        queryParams['endDate'] = endDate.toIso8601String();
+      }
+
+      final uri = Uri.parse('$_baseUrl/expenses/export').replace(queryParameters: queryParams);
+      debugPrint('Exporting PDF from URL: $uri');
+      
+      final response = await http.get(uri, headers: headers);
+      if (response.statusCode == 200) {
+        final bytes = response.bodyBytes;
+        await saveFile(bytes, 'transactions_report.pdf');
+      } else {
+        debugPrint('Failed to export PDF: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('Error exporting expenses PDF: $e');
     }
   }
 }
