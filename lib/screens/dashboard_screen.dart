@@ -42,14 +42,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final expenseBudgets = budgets.where((b) => !b.isIncome).toList();
     final incomeBudgets = budgets.where((b) => b.isIncome).toList();
     final totalBalance = ref.read(accountProvider.notifier).totalBalance;
-    
+
     final currencyFormat = NumberFormat.currency(symbol: '₹', decimalDigits: 2);
 
     final filteredExpenses = expenses.where((e) {
-      final matchesType = _selectedType == 'All' || 
+      final matchesType =
+          _selectedType == 'All' ||
           (_selectedType == 'Income' && e.isIncome) ||
           (_selectedType == 'Expense' && !e.isIncome);
-      final matchesAccount = _selectedAccountId == 'All' || e.accountId == _selectedAccountId;
+      final matchesAccount =
+          _selectedAccountId == 'All' || e.accountId == _selectedAccountId;
       return matchesType && matchesAccount;
     }).toList();
 
@@ -64,176 +66,231 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
           child: CustomScrollView(
             slivers: [
-            SliverAppBar(
-              expandedHeight: 220,
-              floating: false,
-              pinned: true,
-              backgroundColor: AppColors.primary,
-              flexibleSpace: FlexibleSpaceBar(
-                background: Container(
-                  decoration: const BoxDecoration(
-                    image: DecorationImage(
-                      image: AssetImage('assets/header_bg.png'),
-                      fit: BoxFit.cover,
+              SliverAppBar(
+                expandedHeight: 220,
+                floating: false,
+                pinned: true,
+                backgroundColor: AppColors.primary,
+                flexibleSpace: FlexibleSpaceBar(
+                  background: Container(
+                    decoration: const BoxDecoration(
+                      image: DecorationImage(
+                        image: AssetImage('assets/header_bg.png'),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 40),
+                        Text(
+                          'Welcome back, ${user?.displayName ?? 'User'}!',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Total Balance',
+                          style: TextStyle(color: Colors.white70, fontSize: 14),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          currencyFormat.format(totalBalance),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 40,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                ),
+                actions: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.analytics_outlined,
+                      color: Colors.white,
+                    ),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AnalyticsScreen(),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.notifications_outlined,
+                      color: Colors.white,
+                    ),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SettingsScreen(),
+                      ),
+                    ),
+                  ),
+                  _buildAvatarButton(context, user),
+                ],
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 40),
-                      Text(
-                        'Welcome back, ${user?.displayName ?? 'User'}!',
-                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Total Balance',
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        currencyFormat.format(totalBalance),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 40,
-                          fontWeight: FontWeight.bold,
+                      _buildSectionHeader(
+                        'Your Accounts',
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AllAccountsScreen(),
+                          ),
+                        ),
+                        onAdd: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AddAccountScreen(),
+                          ),
                         ),
                       ),
+                      const SizedBox(height: 16),
+                      AccountCarousel(
+                        accounts: accounts,
+                        onTap: (account) => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                AddAccountScreen(initialAccount: account),
+                          ),
+                        ),
+                        onDelete: (account) {
+                          showAdaptiveDialog(
+                            context: context,
+                            builder: (context) => AlertDialog.adaptive(
+                              title: const Text('Delete Account'),
+                              content: Text(
+                                'Are you sure you want to delete "${account.name}"?',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    HapticFeedback.mediumImpact();
+                                    ref
+                                        .read(accountProvider.notifier)
+                                        .deleteAccount(account.id);
+                                    Navigator.pop(context);
+                                  },
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.red,
+                                  ),
+                                  child: const Text('Delete'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 32),
+                      _buildSectionHeader(
+                        'Recent Transactions',
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AllTransactionsScreen(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildFilterSection(accounts),
+                      const SizedBox(height: 16),
+                      if (filteredExpenses.isEmpty)
+                        _buildEmptyState(
+                          message: expenses.isEmpty
+                              ? 'No transactions yet'
+                              : 'No matching transactions found',
+                        )
+                      else
+                        ...filteredExpenses.take(5).map((e) {
+                          final account = accounts.firstWhere(
+                            (acc) => acc.id == e.accountId,
+                            orElse: () => accounts.isNotEmpty
+                                ? accounts[0]
+                                : BankAccount(
+                                    name: 'Unknown',
+                                    balance: 0,
+                                    type: AccountType.wallet,
+                                  ),
+                          );
+                          return PerspectiveScrollItem(
+                            child: TransactionTile(
+                              expense: e,
+                              accountName: account.name,
+                              onTap: () => TransactionTile.showDetails(
+                                context,
+                                ref,
+                                e,
+                                account,
+                              ),
+                              onDelete: () => ref
+                                  .read(expenseProvider.notifier)
+                                  .deleteExpense(e),
+                            ),
+                          );
+                        }),
+                      const SizedBox(height: 32),
+                      _buildSectionHeader(
+                        'Expense Budgets',
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AllBudgetsScreen(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ...expenseBudgets
+                          .take(3)
+                          .map(
+                            (b) => PerspectiveScrollItem(
+                              child: _buildBudgetCard(context, b, ref),
+                            ),
+                          ),
+                      const SizedBox(height: 24),
+                      _buildSectionHeader(
+                        'Income Targets',
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AllBudgetsScreen(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ...incomeBudgets
+                          .take(3)
+                          .map(
+                            (b) => PerspectiveScrollItem(
+                              child: _buildBudgetCard(context, b, ref),
+                            ),
+                          ),
+                      const SizedBox(height: 100), // Space for FAB
                     ],
                   ),
                 ),
               ),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.analytics_outlined, color: Colors.white),
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const AnalyticsScreen()),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                  ),
-                ),
-                _buildAvatarButton(context, user),
-              ],
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSectionHeader(
-                      'Your Accounts', 
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const AllAccountsScreen()),
-                      ), 
-                      onAdd: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const AddAccountScreen()),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    AccountCarousel(
-                      accounts: accounts,
-                      onTap: (account) => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AddAccountScreen(initialAccount: account),
-                        ),
-                      ),
-                      onDelete: (account) {
-                        showAdaptiveDialog(
-                          context: context,
-                          builder: (context) => AlertDialog.adaptive(
-                            title: const Text('Delete Account'),
-                            content: Text('Are you sure you want to delete "${account.name}"?'),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('Cancel'),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  HapticFeedback.mediumImpact();
-                                  ref.read(accountProvider.notifier).deleteAccount(account.id);
-                                  Navigator.pop(context);
-                                },
-                                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                                child: const Text('Delete'),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 32),
-                    _buildSectionHeader(
-                    'Recent Transactions', 
-                    () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const AllTransactionsScreen()),
-                    ),
-                  ),
-                    const SizedBox(height: 12),
-                    _buildFilterSection(accounts),
-                    const SizedBox(height: 16),
-                    if (filteredExpenses.isEmpty)
-                      _buildEmptyState(message: expenses.isEmpty ? 'No transactions yet' : 'No matching transactions found')
-                    else
-                      ...filteredExpenses.take(5).map((e) {
-                        final account = accounts.firstWhere(
-                          (acc) => acc.id == e.accountId,
-                          orElse: () => accounts.isNotEmpty ? accounts[0] : BankAccount(name: 'Unknown', balance: 0, type: AccountType.wallet),
-                        );
-                        return PerspectiveScrollItem(
-                          child: TransactionTile(
-                            expense: e, 
-                            accountName: account.name,
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => AddExpenseScreen(initialExpense: e),
-                              ),
-                            ),
-                            onDelete: () => ref.read(expenseProvider.notifier).deleteExpense(e),
-                          ),
-                        );
-                      }),
-                    const SizedBox(height: 32),
-                    _buildSectionHeader(
-                    'Expense Budgets', 
-                    () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const AllBudgetsScreen()),
-                    ),
-                  ),
-                    const SizedBox(height: 16),
-                    ...expenseBudgets.take(3).map((b) => PerspectiveScrollItem(child: _buildBudgetCard(context, b, ref))),
-                    const SizedBox(height: 24),
-                    _buildSectionHeader(
-                    'Income Targets', 
-                    () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const AllBudgetsScreen()),
-                    ),
-                  ),
-                    const SizedBox(height: 16),
-                    ...incomeBudgets.take(3).map((b) => PerspectiveScrollItem(child: _buildBudgetCard(context, b, ref))),
-                    const SizedBox(height: 100), // Space for FAB
-                  ],
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
+        floatingActionButton: FloatingActionButton.extended(
           onPressed: () {
             HapticFeedback.lightImpact();
             Navigator.push(
@@ -247,12 +304,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           label: const Text('Add Expense'),
         ),
       ),
-      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator.adaptive())),
+      loading: () => const Scaffold(
+        body: Center(child: CircularProgressIndicator.adaptive()),
+      ),
       error: (err, stack) => Scaffold(body: Center(child: Text('Error: $err'))),
     );
   }
 
-  Widget _buildSectionHeader(String title, VoidCallback onSeeAll, {VoidCallback? onAdd}) {
+  Widget _buildSectionHeader(
+    String title,
+    VoidCallback onSeeAll, {
+    VoidCallback? onAdd,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -266,17 +329,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               const SizedBox(width: 8),
               IconButton(
                 onPressed: onAdd,
-                icon: const Icon(Icons.add_circle, color: AppColors.primary, size: 24),
+                icon: const Icon(
+                  Icons.add_circle,
+                  color: AppColors.primary,
+                  size: 24,
+                ),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
             ],
           ],
         ),
-        TextButton(
-          onPressed: onSeeAll,
-          child: const Text('See All'),
-        ),
+        TextButton(onPressed: onSeeAll, child: const Text('See All')),
       ],
     );
   }
@@ -333,7 +397,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               _buildFilterChip('Expense', _selectedType == 'Expense', () {
                 setState(() => _selectedType = 'Expense');
               }, activeColor: Colors.red),
-              
+
               if (accounts.length > 1) ...[
                 const SizedBox(width: 16),
                 Container(
@@ -342,15 +406,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   color: isDark ? Colors.white24 : Colors.black12,
                 ),
                 const SizedBox(width: 16),
-                _buildFilterChip('All Accounts', _selectedAccountId == 'All', () {
-                  setState(() => _selectedAccountId = 'All');
-                }),
+                _buildFilterChip(
+                  'All Accounts',
+                  _selectedAccountId == 'All',
+                  () {
+                    setState(() => _selectedAccountId = 'All');
+                  },
+                ),
                 ...accounts.map((acc) {
                   return Padding(
                     padding: const EdgeInsets.only(left: 8),
-                    child: _buildFilterChip(acc.name, _selectedAccountId == acc.id, () {
-                      setState(() => _selectedAccountId = acc.id);
-                    }),
+                    child: _buildFilterChip(
+                      acc.name,
+                      _selectedAccountId == acc.id,
+                      () {
+                        setState(() => _selectedAccountId = acc.id);
+                      },
+                    ),
                   );
                 }),
               ],
@@ -361,7 +433,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _buildFilterChip(String label, bool isSelected, VoidCallback onTap, {Color? activeColor}) {
+  Widget _buildFilterChip(
+    String label,
+    bool isSelected,
+    VoidCallback onTap, {
+    Color? activeColor,
+  }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final themeColor = activeColor ?? AppColors.primary;
     return ChoiceChip(
@@ -370,7 +447,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.bold,
-          color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+          color: isSelected
+              ? Colors.white
+              : (isDark ? Colors.white70 : Colors.black87),
         ),
       ),
       selected: isSelected,
@@ -378,24 +457,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       selectedColor: themeColor,
       backgroundColor: isDark ? AppColors.cardDark : Colors.grey.shade100,
       side: BorderSide.none,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       showCheckmark: false,
     );
-  }  Widget _buildBudgetCard(BuildContext context, dynamic budget, WidgetRef ref) {
+  }
+
+  Widget _buildBudgetCard(BuildContext context, dynamic budget, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final progress = budget.progress;
-    
+
     Color color;
     if (budget.isIncome) {
       color = budget.isAchieved ? AppColors.success : AppColors.primary;
     } else {
-      color = budget.isExceeded 
-          ? AppColors.error 
-          : budget.isNearingLimit 
-              ? AppColors.warning 
-              : AppColors.success;
+      color = budget.isExceeded
+          ? AppColors.error
+          : budget.isNearingLimit
+          ? AppColors.warning
+          : AppColors.success;
     }
 
     return GestureDetector(
@@ -407,7 +486,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           color: isDark ? AppColors.cardDark : Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
         child: Column(
@@ -415,7 +498,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(budget.category, style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  budget.category,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
                 Text(
                   '${NumberFormat.compact().format(budget.currentAmount)} / ${NumberFormat.compact().format(budget.limit)}',
                   style: TextStyle(color: color, fontWeight: FontWeight.bold),
@@ -440,7 +526,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   const SizedBox(width: 4),
                   Text(
                     budget.isExceeded ? 'Limit exceeded!' : 'Approaching limit',
-                    style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
@@ -449,11 +539,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  const Icon(Icons.check_circle_outline, size: 14, color: AppColors.success),
+                  const Icon(
+                    Icons.check_circle_outline,
+                    size: 14,
+                    color: AppColors.success,
+                  ),
                   const SizedBox(width: 4),
                   const Text(
                     'Target achieved!',
-                    style: TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      color: AppColors.success,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
@@ -464,7 +562,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  void _showEditBudgetDialog(BuildContext context, dynamic budget, WidgetRef ref) {
+  void _showEditBudgetDialog(
+    BuildContext context,
+    dynamic budget,
+    WidgetRef ref,
+  ) {
     final controller = TextEditingController(text: budget.limit.toString());
     showDialog(
       context: context,
@@ -479,12 +581,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             onPressed: () {
               final limit = double.tryParse(controller.text);
               if (limit != null) {
-                ref.read(budgetProvider.notifier).updateLimit(budget.category, limit, budget.isIncome);
+                ref
+                    .read(budgetProvider.notifier)
+                    .updateLimit(budget.category, limit, budget.isIncome);
                 Navigator.pop(context);
               }
             },
@@ -511,7 +618,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         height: 30,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 1.5),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.8),
+            width: 1.5,
+          ),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(15),

@@ -6,13 +6,13 @@ import '../widgets/transaction_tile.dart';
 import '../widgets/perspective_scroll_item.dart';
 import '../theme/app_colors.dart';
 import '../models/bank_account.dart';
-import 'add_expense_screen.dart';
 
 class AllTransactionsScreen extends ConsumerStatefulWidget {
   const AllTransactionsScreen({super.key});
 
   @override
-  ConsumerState<AllTransactionsScreen> createState() => _AllTransactionsScreenState();
+  ConsumerState<AllTransactionsScreen> createState() =>
+      _AllTransactionsScreenState();
 }
 
 class _AllTransactionsScreenState extends ConsumerState<AllTransactionsScreen> {
@@ -25,44 +25,57 @@ class _AllTransactionsScreenState extends ConsumerState<AllTransactionsScreen> {
     final accounts = ref.watch(accountProvider);
 
     final filteredExpenses = expenses.where((e) {
-      final matchesType = _selectedType == 'All' || 
+      final matchesType =
+          _selectedType == 'All' ||
           (_selectedType == 'Income' && e.isIncome) ||
           (_selectedType == 'Expense' && !e.isIncome);
-      final matchesAccount = _selectedAccountId == 'All' || e.accountId == _selectedAccountId;
+      final matchesAccount =
+          _selectedAccountId == 'All' || e.accountId == _selectedAccountId;
       return matchesType && matchesAccount;
     }).toList();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Transaction History'),
-      ),
+      appBar: AppBar(title: const Text('Transaction History')),
       body: Column(
         children: [
           _buildFilterSection(accounts),
           Expanded(
             child: filteredExpenses.isEmpty
-                ? _buildEmptyState(message: expenses.isEmpty ? 'No transactions yet' : 'No matching transactions found')
+                ? _buildEmptyState(
+                    message: expenses.isEmpty
+                        ? 'No transactions yet'
+                        : 'No matching transactions found',
+                  )
                 : ListView.separated(
                     padding: const EdgeInsets.all(16),
                     itemCount: filteredExpenses.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: 8),
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 8),
                     itemBuilder: (context, index) {
                       final e = filteredExpenses[index];
                       final account = accounts.firstWhere(
                         (acc) => acc.id == e.accountId,
-                        orElse: () => accounts.isNotEmpty ? accounts[0] : BankAccount(name: 'Unknown', balance: 0, type: AccountType.wallet),
+                        orElse: () => accounts.isNotEmpty
+                            ? accounts[0]
+                            : BankAccount(
+                                name: 'Unknown',
+                                balance: 0,
+                                type: AccountType.wallet,
+                              ),
                       );
                       return PerspectiveScrollItem(
                         child: TransactionTile(
-                          expense: e, 
+                          expense: e,
                           accountName: account.name,
-                          onTap: () => Navigator.push(
+                          onTap: () => TransactionTile.showDetails(
                             context,
-                            MaterialPageRoute(
-                              builder: (context) => AddExpenseScreen(initialExpense: e),
-                            ),
+                            ref,
+                            e,
+                            account,
                           ),
-                          onDelete: () => ref.read(expenseProvider.notifier).deleteExpense(e),
+                          onDelete: () => ref
+                              .read(expenseProvider.notifier)
+                              .deleteExpense(e),
                         ),
                       );
                     },
@@ -91,7 +104,7 @@ class _AllTransactionsScreenState extends ConsumerState<AllTransactionsScreen> {
           _buildFilterChip('Expense', _selectedType == 'Expense', () {
             setState(() => _selectedType = 'Expense');
           }, activeColor: Colors.red),
-          
+
           if (accounts.length > 1) ...[
             const SizedBox(width: 16),
             Container(
@@ -106,9 +119,13 @@ class _AllTransactionsScreenState extends ConsumerState<AllTransactionsScreen> {
             ...accounts.map((acc) {
               return Padding(
                 padding: const EdgeInsets.only(left: 8),
-                child: _buildFilterChip(acc.name, _selectedAccountId == acc.id, () {
-                  setState(() => _selectedAccountId = acc.id);
-                }),
+                child: _buildFilterChip(
+                  acc.name,
+                  _selectedAccountId == acc.id,
+                  () {
+                    setState(() => _selectedAccountId = acc.id);
+                  },
+                ),
               );
             }),
           ],
@@ -117,7 +134,12 @@ class _AllTransactionsScreenState extends ConsumerState<AllTransactionsScreen> {
     );
   }
 
-  Widget _buildFilterChip(String label, bool isSelected, VoidCallback onTap, {Color? activeColor}) {
+  Widget _buildFilterChip(
+    String label,
+    bool isSelected,
+    VoidCallback onTap, {
+    Color? activeColor,
+  }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final themeColor = activeColor ?? AppColors.primary;
     return ChoiceChip(
@@ -126,7 +148,9 @@ class _AllTransactionsScreenState extends ConsumerState<AllTransactionsScreen> {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.bold,
-          color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+          color: isSelected
+              ? Colors.white
+              : (isDark ? Colors.white70 : Colors.black87),
         ),
       ),
       selected: isSelected,
@@ -134,9 +158,7 @@ class _AllTransactionsScreenState extends ConsumerState<AllTransactionsScreen> {
       selectedColor: themeColor,
       backgroundColor: isDark ? AppColors.cardDark : Colors.grey.shade100,
       side: BorderSide.none,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       showCheckmark: false,
     );
   }
@@ -146,9 +168,16 @@ class _AllTransactionsScreenState extends ConsumerState<AllTransactionsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.receipt_long_outlined, size: 80, color: Colors.grey.withValues(alpha: 0.3)),
+          Icon(
+            Icons.receipt_long_outlined,
+            size: 80,
+            color: Colors.grey.withValues(alpha: 0.3),
+          ),
           const SizedBox(height: 16),
-          Text(message, style: const TextStyle(color: Colors.grey, fontSize: 16)),
+          Text(
+            message,
+            style: const TextStyle(color: Colors.grey, fontSize: 16),
+          ),
         ],
       ),
     );

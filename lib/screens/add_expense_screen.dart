@@ -20,16 +20,31 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
   final _customCategoryController = TextEditingController();
-  
+
   String _selectedCategory = 'Food';
   String? _selectedAccountId;
   DateTime _selectedDate = DateTime.now();
   bool _isIncome = false;
+  bool _isSaving = false;
 
-  final List<String> _expenseCategories = ['Food', 'Travel', 'Shopping', 'Bills', 'Health', 'Entertainment', 'Other'];
-  final List<String> _incomeCategories = ['Salary', 'Freelance', 'Investments', 'Other'];
+  final List<String> _expenseCategories = [
+    'Food',
+    'Travel',
+    'Shopping',
+    'Bills',
+    'Health',
+    'Entertainment',
+    'Other',
+  ];
+  final List<String> _incomeCategories = [
+    'Salary',
+    'Freelance',
+    'Investments',
+    'Other',
+  ];
 
-  List<String> get _categories => _isIncome ? _incomeCategories : _expenseCategories;
+  List<String> get _categories =>
+      _isIncome ? _incomeCategories : _expenseCategories;
 
   @override
   void initState() {
@@ -39,10 +54,12 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       _amountController.text = e.amount.toString();
       _noteController.text = e.note ?? '';
       _selectedAccountId = e.accountId;
-      _selectedDate = e.dateTime;
+      _selectedDate = e.dateTime.toLocal();
       _isIncome = e.isIncome;
 
-      final currentCategories = e.isIncome ? _incomeCategories : _expenseCategories;
+      final currentCategories = e.isIncome
+          ? _incomeCategories
+          : _expenseCategories;
       if (currentCategories.contains(e.category) && e.category != 'Other') {
         _selectedCategory = e.category;
       } else {
@@ -50,7 +67,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         _customCategoryController.text = e.category;
       }
     } else {
-      _selectedCategory = _isIncome ? _incomeCategories.first : _expenseCategories.first;
+      _selectedCategory = _isIncome
+          ? _incomeCategories.first
+          : _expenseCategories.first;
     }
   }
 
@@ -69,9 +88,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.initialExpense != null 
-            ? 'Edit Transaction' 
-            : (_isIncome ? 'Add Income' : 'Add Expense')),
+        title: Text(
+          widget.initialExpense != null
+              ? 'Edit Transaction'
+              : (_isIncome ? 'Add Income' : 'Add Expense'),
+        ),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -99,43 +120,63 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                   onSelectionChanged: (Set<bool> newSelection) {
                     setState(() {
                       _isIncome = newSelection.first;
-                      final newCategories = _isIncome ? _incomeCategories : _expenseCategories;
+                      final newCategories = _isIncome
+                          ? _incomeCategories
+                          : _expenseCategories;
                       if (!newCategories.contains(_selectedCategory)) {
                         _selectedCategory = newCategories.first;
                       }
                     });
                   },
                   style: SegmentedButton.styleFrom(
-                    selectedBackgroundColor: _isIncome ? Colors.green : Colors.red,
+                    selectedBackgroundColor: _isIncome
+                        ? Colors.green
+                        : Colors.red,
                     selectedForegroundColor: Colors.white,
                   ),
                 ),
               ),
               const SizedBox(height: 32),
-              const Text('Amount', style: TextStyle(color: Colors.grey, fontSize: 14)),
+              const Text(
+                'Amount',
+                style: TextStyle(color: Colors.grey, fontSize: 14),
+              ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _amountController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 style: TextStyle(
-                  fontSize: 40, 
+                  fontSize: 40,
                   fontWeight: FontWeight.bold,
-                  color: _isIncome ? Colors.green : (isDark ? Colors.white : Colors.black),
+                  color: _isIncome
+                      ? Colors.green
+                      : (isDark ? Colors.white : Colors.black),
                 ),
                 decoration: InputDecoration(
                   prefixText: '₹ ',
                   border: InputBorder.none,
                   hintText: '0',
-                  hintStyle: TextStyle(color: Colors.grey.withValues(alpha: 0.3)),
+                  hintStyle: TextStyle(
+                    color: Colors.grey.withValues(alpha: 0.3),
+                  ),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter amount';
-                  if (double.tryParse(value) == null) return 'Enter a valid number';
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter amount';
+                  }
+                  if (double.tryParse(value) == null) {
+                    return 'Enter a valid number';
+                  }
                   return null;
                 },
               ),
               const SizedBox(height: 32),
-              const Text('Category', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                'Category',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
@@ -150,7 +191,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                     },
                     selectedColor: _isIncome ? Colors.green : AppColors.primary,
                     labelStyle: TextStyle(
-                      color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                      color: isSelected
+                          ? Colors.white
+                          : (isDark ? Colors.white70 : Colors.black87),
                     ),
                   );
                 }).toList(),
@@ -166,15 +209,26 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                     fillColor: isDark ? AppColors.cardDark : Colors.white,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: isDark ? BorderSide(color: Colors.white.withValues(alpha: 0.1)) : BorderSide.none,
+                      borderSide: isDark
+                          ? BorderSide(
+                              color: Colors.white.withValues(alpha: 0.1),
+                            )
+                          : BorderSide.none,
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: isDark ? BorderSide(color: Colors.white.withValues(alpha: 0.1)) : BorderSide.none,
+                      borderSide: isDark
+                          ? BorderSide(
+                              color: Colors.white.withValues(alpha: 0.1),
+                            )
+                          : BorderSide.none,
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: _isIncome ? Colors.green : AppColors.primary, width: 2),
+                      borderSide: BorderSide(
+                        color: _isIncome ? Colors.green : AppColors.primary,
+                        width: 2,
+                      ),
                     ),
                   ),
                   validator: (value) {
@@ -186,63 +240,169 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 ),
               ],
               const SizedBox(height: 32),
-              const Text('Account', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                'Account',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                initialValue: accounts.any((acc) => acc.id == _selectedAccountId) ? _selectedAccountId : null,
+                initialValue:
+                    accounts.any((acc) => acc.id == _selectedAccountId)
+                    ? _selectedAccountId
+                    : null,
                 hint: const Text('Select Bank Account'),
                 items: accounts.map((acc) {
-                  return DropdownMenuItem(
-                    value: acc.id,
-                    child: Text(acc.name),
-                  );
+                  return DropdownMenuItem(value: acc.id, child: Text(acc.name));
                 }).toList(),
-                onChanged: (value) => setState(() => _selectedAccountId = value),
-                validator: (value) => value == null ? 'Please select an account' : null,
+                onChanged: (value) =>
+                    setState(() => _selectedAccountId = value),
+                validator: (value) =>
+                    value == null ? 'Please select an account' : null,
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: isDark ? AppColors.cardDark : Colors.white,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: isDark ? BorderSide(color: Colors.white.withValues(alpha: 0.1)) : BorderSide.none,
+                    borderSide: isDark
+                        ? BorderSide(color: Colors.white.withValues(alpha: 0.1))
+                        : BorderSide.none,
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: isDark ? BorderSide(color: Colors.white.withValues(alpha: 0.1)) : BorderSide.none,
+                    borderSide: isDark
+                        ? BorderSide(color: Colors.white.withValues(alpha: 0.1))
+                        : BorderSide.none,
                   ),
                 ),
               ),
               const SizedBox(height: 32),
-              const Text('Date', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                'Date & Time',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 12),
-              InkWell(
-                onTap: () async {
-                  final date = await showDatePicker(
-                    context: context,
-                    initialDate: _selectedDate,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime.now(),
-                  );
-                  if (date != null) setState(() => _selectedDate = date);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.cardDark : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.transparent),
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () async {
+                        final date = await showDatePicker(
+                          context: context,
+                          initialDate: _selectedDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime.now(),
+                        );
+                        if (date != null) {
+                          setState(() {
+                            _selectedDate = DateTime(
+                              date.year,
+                              date.month,
+                              date.day,
+                              _selectedDate.hour,
+                              _selectedDate.minute,
+                            );
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.cardDark : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.1)
+                                : Colors.transparent,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.calendar_today,
+                              size: 20,
+                              color: _isIncome
+                                  ? Colors.green
+                                  : AppColors.primary,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                DateFormat(
+                                  'MMM dd, yyyy',
+                                ).format(_selectedDate),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.calendar_today, size: 20, color: _isIncome ? Colors.green : AppColors.primary),
-                      const SizedBox(width: 12),
-                      Text(DateFormat('MMM dd, yyyy').format(_selectedDate)),
-                    ],
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () async {
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.fromDateTime(_selectedDate),
+                        );
+                        if (time != null) {
+                          setState(() {
+                            _selectedDate = DateTime(
+                              _selectedDate.year,
+                              _selectedDate.month,
+                              _selectedDate.day,
+                              time.hour,
+                              time.minute,
+                            );
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.cardDark : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.1)
+                                : Colors.transparent,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.access_time,
+                              size: 20,
+                              color: _isIncome
+                                  ? Colors.green
+                                  : AppColors.primary,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                DateFormat('hh:mm a').format(_selectedDate),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
               const SizedBox(height: 32),
-              const Text('Note (Optional)', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                'Note (Optional)',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _noteController,
@@ -252,24 +412,45 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                   fillColor: isDark ? AppColors.cardDark : Colors.white,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: isDark ? BorderSide(color: Colors.white.withValues(alpha: 0.1)) : BorderSide.none,
+                    borderSide: isDark
+                        ? BorderSide(color: Colors.white.withValues(alpha: 0.1))
+                        : BorderSide.none,
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: isDark ? BorderSide(color: Colors.white.withValues(alpha: 0.1)) : BorderSide.none,
+                    borderSide: isDark
+                        ? BorderSide(color: Colors.white.withValues(alpha: 0.1))
+                        : BorderSide.none,
                   ),
                 ),
               ),
               const SizedBox(height: 40),
               ElevatedButton(
-                onPressed: _saveExpense,
+                onPressed: _isSaving ? null : _saveExpense,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _isIncome ? Colors.green : AppColors.primary,
+                  backgroundColor: _isSaving
+                      ? Colors.grey
+                      : (_isIncome ? Colors.green : AppColors.primary),
                 ),
-                child: Text(
-                  widget.initialExpense != null ? 'Update Transaction' : (_isIncome ? 'Save Income' : 'Save Expense'), 
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)
-                ),
+                child: _isSaving
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : Text(
+                        widget.initialExpense != null
+                            ? 'Update Transaction'
+                            : (_isIncome ? 'Save Income' : 'Save Expense'),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
             ],
           ),
@@ -279,69 +460,63 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   }
 
   void _saveExpense() async {
+    if (_isSaving) return;
     if (_formKey.currentState!.validate()) {
-      final amount = double.parse(_amountController.text);
-      
-      // If editing, we revert the OLD balance change first
-      if (widget.initialExpense != null) {
-        final oldE = widget.initialExpense!;
-        final accounts = ref.read(accountProvider);
-        final oldAccount = accounts.firstWhere((acc) => acc.id == oldE.accountId);
-        
-        // REVERT old balance
-        final revertedBalance = oldE.isIncome 
-            ? oldAccount.balance - oldE.amount 
-            : oldAccount.balance + oldE.amount;
-        
-        await ref.read(accountProvider.notifier).addAccount(oldAccount.copyWith(balance: revertedBalance));
-      }
+      setState(() => _isSaving = true);
+      try {
+        final amount = double.parse(_amountController.text);
+        final categoryName = _selectedCategory == 'Other'
+            ? _customCategoryController.text.trim()
+            : _selectedCategory;
 
-      final categoryName = _selectedCategory == 'Other' 
-          ? _customCategoryController.text.trim() 
-          : _selectedCategory;
+        final expense = Expense(
+          id: widget.initialExpense?.id, // Keep same ID if editing
+          amount: amount,
+          category: categoryName,
+          dateTime: _selectedDate,
+          accountId: _selectedAccountId!,
+          note: _noteController.text.isEmpty ? null : _noteController.text,
+          isIncome: _isIncome,
+        );
 
-      final expense = Expense(
-        id: widget.initialExpense?.id, // Keep same ID if editing
-        amount: amount,
-        category: categoryName,
-        dateTime: _selectedDate,
-        accountId: _selectedAccountId!,
-        note: _noteController.text.isEmpty ? null : _noteController.text,
-        isIncome: _isIncome,
-      );
+        await ref.read(expenseProvider.notifier).addExpense(expense);
 
-      await ref.read(expenseProvider.notifier).addExpense(expense);
-
-      // Apply NEW balance
-      final updatedAccounts = ref.read(accountProvider);
-      final account = updatedAccounts.firstWhere((acc) => acc.id == _selectedAccountId);
-      final newBalance = _isIncome 
-          ? account.balance + amount 
-          : account.balance - amount;
-      
-      await ref.read(accountProvider.notifier).addAccount(account.copyWith(balance: newBalance));
-
-      // Check if budget is exceeded (only for expenses)
-      if (!_isIncome) {
-        final budgets = ref.read(budgetProvider);
-        final budgetIndex = budgets.indexWhere((b) => b.category == categoryName);
-        if (budgetIndex != -1) {
-          final budget = budgets[budgetIndex];
-          if (budget.currentAmount + amount > budget.limit) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('⚠️ Alert: You have exceeded your ${budget.category} budget!'),
-                  backgroundColor: AppColors.error,
-                  duration: const Duration(seconds: 5),
-                ),
-              );
+        // Check if budget is exceeded (only for expenses)
+        if (!_isIncome) {
+          final budgets = ref.read(budgetProvider);
+          final budgetIndex = budgets.indexWhere(
+            (b) => b.category == categoryName,
+          );
+          if (budgetIndex != -1) {
+            final budget = budgets[budgetIndex];
+            if (budget.currentAmount + amount > budget.limit) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      '⚠️ Alert: You have exceeded your ${budget.category} budget!',
+                    ),
+                    backgroundColor: AppColors.error,
+                    duration: const Duration(seconds: 5),
+                  ),
+                );
+              }
             }
           }
         }
-      }
 
-      if (mounted) Navigator.pop(context);
+        if (mounted) Navigator.pop(context);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to save transaction: $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+        setState(() => _isSaving = false);
+      }
     }
   }
 }
